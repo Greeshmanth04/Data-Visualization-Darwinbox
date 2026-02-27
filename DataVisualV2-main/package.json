@@ -1,0 +1,26 @@
+{
+  "name": "lumina-analytics",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "server": "npm run start -w backend",
+    "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "npm run build -w frontend",
+    "preview": "npm run preview -w frontend"
+  },
+  "dependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/json2csv": "^5.0.7",
+    "jspdf": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "concurrently": "^9.2.1"
+  }
+}
