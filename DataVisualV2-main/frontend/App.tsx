@@ -135,7 +135,7 @@ const App: React.FC = () => {
       case 'users':
         return <UserManagement />;
       case 'schema':
-        return <SchemaView datasets={datasets} onUpdateDataset={handleUpdateDataset} />;
+        return <SchemaView datasets={datasets} onUpdateDataset={handleUpdateDataset} onAddDataset={(ds) => setDatasets(prev => [...prev, ds])} />;
       case 'settings':
         return (
           <div className="flex items-center justify-center h-full text-slate-500 bg-slate-900">

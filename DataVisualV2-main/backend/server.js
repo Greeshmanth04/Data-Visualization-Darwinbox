@@ -14,6 +14,7 @@ import datasourceRoutes from './routes/datasourceRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
+import connectionRoutes from './routes/connectionRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use('/api/datasource', authMiddleware, datasourceRoutes);
 app.use('/api/dashboards', authMiddleware, dashboardRoutes);
 app.use('/api/ai', authMiddleware, aiRoutes);
 app.use('/api/export', authMiddleware, exportRoutes);
+app.use('/api/connections', authMiddleware, connectionRoutes);
 
 // Health Check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

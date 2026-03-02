@@ -218,6 +218,25 @@ export const api = {
         })
     },
 
+    // --- Connections ---
+    connections: {
+        test: (config: any) => request<{ success: boolean; message: string }>('/connections/test', {
+            method: 'POST',
+            body: JSON.stringify(config)
+        }),
+        create: (config: any) => request<any>('/connections', {
+            method: 'POST',
+            body: JSON.stringify(config)
+        }),
+        getAll: () => request<any[]>('/connections', { method: 'GET' }),
+        delete: (id: string) => request<{ message: string }>(`/connections/${id}`, { method: 'DELETE' }),
+        query: (id: string, payload: { table?: string; collection?: string; limit?: number }) =>
+            request<{ data: any[]; columns: { name: string; type: string }[] }>(`/connections/${id}/query`, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+    },
+
     // --- Dashboards ---
     dashboards: {
         getAll: (userId: string) => request(`/dashboards?userId=${userId}`, {}, async () => {

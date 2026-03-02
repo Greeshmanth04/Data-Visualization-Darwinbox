@@ -41,6 +41,35 @@ export interface Dataset {
   isLive?: boolean;
 }
 
+export interface DatabaseForeignKey {
+  column: string;
+  referenceTable: string;
+  referenceColumn: string;
+}
+
+export interface DatabaseColumn {
+  name: string;
+  type: string;
+  isPrimaryKey: boolean;
+}
+
+export interface DatabaseTable {
+  name: string;
+  columns: DatabaseColumn[];
+  foreignKeys: DatabaseForeignKey[];
+}
+
+export interface DatabaseConnection {
+  id: string;
+  name: string;
+  type: 'mysql' | 'postgres' | 'mongodb';
+  uri: string;
+  tables: DatabaseTable[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+
 export interface DashboardWidget {
   id: string;
   title: string;

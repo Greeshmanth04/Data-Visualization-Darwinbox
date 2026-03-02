@@ -122,10 +122,10 @@ export const previewMongoData = async (req, res) => {
 };
 
 export const connectSql = async (req, res) => {
-    const { type, host, port, database, user, password } = req.body;
+    const { type, uri } = req.body;
     try {
         if (type === 'mysql') {
-            const connection = await mysql.createConnection({ host, port, user, password, database });
+            const connection = await mysql.createConnection(uri);
             try {
                 const [rows] = await connection.execute('SHOW TABLES');
                 res.json({ tables: rows.map(r => Object.values(r)[0]) });
@@ -133,7 +133,12 @@ export const connectSql = async (req, res) => {
                 await connection.end().catch(() => { });
             }
         } else if (type === 'postgres') {
-            const client = new pg.Client({ host, port, user, password, database, ssl: { rejectUnauthorized: false } });
+            let pgUri = uri;
+            if (pgUri.includes('sslmode=')) {
+                pgUri = pgUri.replace(/[?&]sslmode=[^&]+/, '');
+                if (pgUri.endsWith('?') || pgUri.endsWith('&')) pgUri = pgUri.slice(0, -1);
+            }
+            const client = new pg.Client({ connectionString: pgUri, ssl: { rejectUnauthorized: false } });
             await client.connect();
             try {
                 const result = await client.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public'");
@@ -150,18 +155,14 @@ export const connectSql = async (req, res) => {
 };
 
 export const querySql = async (req, res) => {
-    const { type, host, port, database, user, password, query } = req.body;
+    const { type, uri, query } = req.body;
     if (!query || !query.toLowerCase().trim().startsWith('select')) {
         return res.status(400).json({ message: 'Only SELECT queries are allowed' });
     }
     try {
-        const cacheKey = `query:${Buffer.from(JSON.stringify({ host, database, query })).toString('base64')}`;
-        const cached = await getCache(cacheKey);
-        if (cached) return res.json({ data: cached });
-
         let rows = [];
         if (type === 'mysql') {
-            const connection = await mysql.createConnection({ host, port, user, password, database });
+            const connection = await mysql.createConnection(uri);
             try {
                 const [result] = await connection.execute(query);
                 rows = result;
@@ -169,7 +170,12 @@ export const querySql = async (req, res) => {
                 await connection.end().catch(() => { });
             }
         } else if (type === 'postgres') {
-            const client = new pg.Client({ host, port, user, password, database, ssl: { rejectUnauthorized: false } });
+            let pgUri = uri;
+            if (pgUri.includes('sslmode=')) {
+                pgUri = pgUri.replace(/[?&]sslmode=[^&]+/, '');
+                if (pgUri.endsWith('?') || pgUri.endsWith('&')) pgUri = pgUri.slice(0, -1);
+            }
+            const client = new pg.Client({ connectionString: pgUri, ssl: { rejectUnauthorized: false } });
             await client.connect();
             try {
                 const result = await client.query(query);
@@ -177,8 +183,9 @@ export const querySql = async (req, res) => {
             } finally {
                 await client.end().catch(() => { });
             }
+        } else {
+            return res.status(400).json({ message: 'Unsupported SQL type' });
         }
-        await setCache(cacheKey, rows, 600);
         res.json({ data: rows });
     } catch (e) {
         res.status(400).json({ message: 'Query failed: ' + e.message });

@@ -182,7 +182,7 @@ const DataSourceModal: React.FC<{
         setDatabases(res.databases);
         setStep('dbSelect');
       } else if (sourceType === 'mysql' || sourceType === 'postgres') {
-        const res = await api.datasets.connectSQL({ ...config, type: sourceType });
+        const res = await api.datasets.connectSQL({ uri: config.uri, type: sourceType });
         setTables(res.tables);
         setStep('preview');
       }
@@ -218,7 +218,7 @@ const DataSourceModal: React.FC<{
         data = res.data;
       } else {
         const query = `SELECT * FROM ${config.table} LIMIT 10`;
-        const res = await api.datasets.querySQL({ ...config, type: sourceType, query });
+        const res = await api.datasets.querySQL({ uri: config.uri, type: sourceType, query });
         data = res.data;
       }
       setPreviewData(data);
@@ -308,29 +308,19 @@ const DataSourceModal: React.FC<{
                     value={config.uri || ''}
                     onChange={e => setConfig({ ...config, uri: e.target.value })}
                   />
+                  <p className="text-xs text-slate-500 mt-2">Connecting to collections automatically targets default database parsing.</p>
                 </div>
               ) : (sourceType === 'mysql' || sourceType === 'postgres') ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Host</label>
-                    <input type="text" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" value={config.host || ''} onChange={e => setConfig({ ...config, host: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Port</label>
-                    <input type="number" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" value={config.port || (sourceType === 'mysql' ? 3306 : 5432)} onChange={e => setConfig({ ...config, port: parseInt(e.target.value) })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Database</label>
-                    <input type="text" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" value={config.database || ''} onChange={e => setConfig({ ...config, database: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Username</label>
-                    <input type="text" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" value={config.user || ''} onChange={e => setConfig({ ...config, user: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
-                    <input type="password" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white" value={config.password || ''} onChange={e => setConfig({ ...config, password: e.target.value })} />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1">Connection String URI</label>
+                  <input
+                    type="text"
+                    placeholder={sourceType === 'mysql' ? "mysql://user:pass@host:port/db" : "postgres://user:pass@host:port/db?sslmode=require"}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white outline-none font-mono text-sm"
+                    value={config.uri || ''}
+                    onChange={e => setConfig({ ...config, uri: e.target.value })}
+                  />
+                  <p className="text-xs text-slate-500 mt-2">All credentials are <b>AES-256 encrypted</b> before server persistence.</p>
                 </div>
               ) : null}
 
