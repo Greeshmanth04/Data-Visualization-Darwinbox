@@ -15,8 +15,9 @@ export interface User {
 
 export interface ColumnDefinition {
   name: string;
-  type: 'string' | 'number' | 'date' | 'boolean';
+  type: string;
   description?: string;
+  displayName?: string;
 }
 
 export interface AccessPolicy {
@@ -75,4 +76,4 @@ export interface AIAnalysisResult {
   recommendations: string[];
 }
 
-export type ViewState = 'dashboard' | 'sql' | 'catalog' | 'knowledge' | 'settings' | 'users';
+export type ViewState = 'dashboard' | 'sql' | 'catalog' | 'knowledge' | 'settings' | 'users' | 'schema';

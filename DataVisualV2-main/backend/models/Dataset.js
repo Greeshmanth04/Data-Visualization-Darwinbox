@@ -2,8 +2,9 @@ import mongoose from 'mongoose';
 
 const ColumnDefinitionSchema = new mongoose.Schema({
     name: String,
-    type: { type: String, enum: ['string', 'number', 'date', 'boolean'] },
-    description: String
+    type: { type: String }, // looser type validation array since datasetController handles varied types
+    description: String,
+    displayName: String
 });
 
 const AccessPolicySchema = new mongoose.Schema({

@@ -24,8 +24,16 @@ export const getDatasets = async (req, res) => {
 
 export const updateDataset = async (req, res) => {
     try {
-        const updated = await Dataset.findOneAndUpdate({ id: req.params.id }, req.body, { returnDocument: 'after' });
-        if (!updated) return res.status(404).json({ message: 'Dataset not found' });
+        const dataset = await Dataset.findOne({ id: req.params.id });
+        if (!dataset) return res.status(404).json({ message: 'Dataset not found' });
+
+        if (req.body.name) dataset.name = req.body.name;
+        if (req.body.description !== undefined) dataset.description = req.body.description;
+        if (req.body.columns) dataset.columns = req.body.columns;
+        if (req.body.accessPolicies) dataset.accessPolicies = req.body.accessPolicies;
+
+        const updated = await dataset.save();
+
         await deleteCache('catalog:list');
         await deleteCache(`schema:${req.params.id}`);
         res.json(updated);

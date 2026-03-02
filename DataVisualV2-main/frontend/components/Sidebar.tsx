@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserRole, ViewState, User } from '../types';
-import { LayoutDashboard, Database, FileText, Settings, BookOpen, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, Database, FileText, Settings, BookOpen, LogOut, Users, Workflow } from 'lucide-react';
 
 interface SidebarProps {
   currentUser?: User | null;
@@ -15,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, onChangeVie
     { id: 'dashboard' as ViewState, label: 'Dashboards', icon: LayoutDashboard },
     { id: 'sql' as ViewState, label: 'Editor', icon: Database },
     { id: 'catalog' as ViewState, label: 'Data Catalog', icon: FileText },
+    { id: 'schema' as ViewState, label: 'Schema', icon: Workflow },
     { id: 'knowledge' as ViewState, label: 'Knowledge Base', icon: BookOpen },
     { id: 'settings' as ViewState, label: 'Settings', icon: Settings },
   ];

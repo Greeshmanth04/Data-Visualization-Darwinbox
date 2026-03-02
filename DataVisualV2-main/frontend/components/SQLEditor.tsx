@@ -508,14 +508,18 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
                 <table className="min-w-full text-left border-collapse table-auto">
                   <thead>
                     <tr className="bg-slate-800 sticky top-0 z-10">
-                      {Object.keys(results[0]).map(key => (
-                        <th
-                          key={key}
-                          className="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700 whitespace-nowrap"
-                        >
-                          {key}
-                        </th>
-                      ))}
+                      {Object.keys(results[0]).map(key => {
+                        const col = selectedDataset?.columns?.find(c => c.name === key);
+                        const display = col?.displayName || key;
+                        return (
+                          <th
+                            key={key}
+                            className="px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700 whitespace-nowrap"
+                          >
+                            {display}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -595,7 +599,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
                         setQuery(prev => prev + col.name);
                       }}
                     >
-                      <span className="text-slate-400 group-hover:text-slate-200 transition-colors truncate">{col.name}</span>
+                      <span className="text-slate-400 group-hover:text-slate-200 transition-colors truncate">{col.displayName || col.name}</span>
                       <span className="text-slate-600 ml-2 flex-shrink-0">{col.type}</span>
                     </div>
                   ))}

@@ -6,6 +6,7 @@ import DataCatalog from './components/DataCatalog';
 import KnowledgeBase from './components/KnowledgeBase';
 import AuthView from './components/AuthView';
 import UserManagement from './components/UserManagement';
+import SchemaView from './components/SchemaView';
 import { ViewState, Dataset, Dashboard, User } from './types';
 import { api, getToken, removeToken } from './services/api';
 import { DatasetProvider } from './context/DatasetContext';
@@ -133,6 +134,8 @@ const App: React.FC = () => {
         return <KnowledgeBase datasets={datasets} />;
       case 'users':
         return <UserManagement />;
+      case 'schema':
+        return <SchemaView datasets={datasets} onUpdateDataset={handleUpdateDataset} />;
       case 'settings':
         return (
           <div className="flex items-center justify-center h-full text-slate-500 bg-slate-900">

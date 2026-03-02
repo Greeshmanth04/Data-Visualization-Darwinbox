@@ -130,7 +130,7 @@ const AccessControlModal: React.FC<{
                                   <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isHidden ? 'border-slate-500 bg-transparent' : 'border-blue-500 bg-blue-500'}`}>
                                     {!isHidden && <Check size={10} className="text-white" />}
                                   </div>
-                                  <span className={`text-sm ${isHidden ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{col.name}</span>
+                                  <span className={`text-sm ${isHidden ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{col.displayName || col.name}</span>
                                 </div>
                               );
                             })}
@@ -756,7 +756,10 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
                       {visibleColumns.length > 0 ? (
                         visibleColumns.map(col => (
                           <tr key={col.name} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-mono text-sm text-blue-300">{col.name}</td>
+                            <td className="px-6 py-4 font-mono text-sm text-blue-300">
+                              {col.displayName || col.name}
+                              {col.displayName && <span className="text-slate-500 text-xs ml-2 opacity-50">({col.name})</span>}
+                            </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center space-x-2 text-sm text-slate-400">
                                 {getIconForType(col.type)}
@@ -787,12 +790,12 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
                       <thead className="bg-slate-950">
                         <tr>
                           {visibleColumns.map(col => (
-                            <th key={col.name} className="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">{col.name}</th>
+                            <th key={col.name} className="px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">{col.displayName || col.name}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800">
-                        {visibleColumns.length > 0 ? (
+                        {visibleColumns.length > 0 && selectedDataset?.data?.length > 0 ? (
                           selectedDataset.data.slice(0, 5).map((row, idx) => (
                             <tr key={idx} className="hover:bg-slate-800/30">
                               {visibleColumns.map(col => (
@@ -831,8 +834,8 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
               Select a dataset to view details
             </div>
           )}
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 

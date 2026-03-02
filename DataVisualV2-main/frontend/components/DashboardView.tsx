@@ -128,7 +128,18 @@ const MetricCard: React.FC<{ title: string; value: string | number; change?: num
   </div>
 );
 
-const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[] }> = ({ widget, data }) => {
+const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?: any }> = ({ widget, data, dataset }) => {
+  const xAxisName = useMemo(() => {
+    if (!dataset || !widget.config.xAxis) return widget.config.xAxis;
+    const col = dataset.columns?.find((c: any) => c.name === widget.config.xAxis);
+    return col?.displayName || widget.config.xAxis;
+  }, [dataset, widget.config.xAxis]);
+
+  const dataKeyName = useMemo(() => {
+    if (!dataset || !widget.config.dataKey) return widget.config.dataKey;
+    const col = dataset.columns?.find((c: any) => c.name === widget.config.dataKey);
+    return col?.displayName || widget.config.dataKey;
+  }, [dataset, widget.config.dataKey]);
   const chartData = useMemo(() => {
     if (widget.type === 'metric') return data;
 
@@ -159,15 +170,26 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[] }> = ({ wi
     return (
       <div className="w-full h-full min-h-[100px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
+          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-            <XAxis dataKey={widget.config.xAxis} stroke="#94a3b8" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+            <XAxis
+              dataKey={widget.config.xAxis}
+              stroke="#94a3b8"
+              tick={{ fontSize: 12 }}
+              label={{ value: xAxisName, position: 'bottom', offset: 0, fill: '#cbd5e1', fontSize: 12 }}
+            />
+            <YAxis
+              stroke="#94a3b8"
+              tick={{ fontSize: 12 }}
+              label={{ value: dataKeyName, angle: -90, position: 'insideLeft', offset: -10, fill: '#cbd5e1', fontSize: 12 }}
+            />
             <Tooltip
               contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
               itemStyle={{ color: '#f8fafc' }}
+              labelFormatter={() => ''}
+              formatter={(value: number) => [value, dataKeyName]}
             />
-            <Bar dataKey={widget.config.dataKey!} fill={widget.config.color || '#3b82f6'} radius={[4, 4, 0, 0]} />
+            <Bar name={dataKeyName} dataKey={widget.config.dataKey!} fill={widget.config.color || '#3b82f6'} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -178,15 +200,27 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[] }> = ({ wi
     return (
       <div className="w-full h-full min-h-[100px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
+          <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-            <XAxis dataKey={widget.config.xAxis} stroke="#94a3b8" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+            <XAxis
+              dataKey={widget.config.xAxis}
+              stroke="#94a3b8"
+              tick={{ fontSize: 12 }}
+              label={{ value: xAxisName, position: 'bottom', offset: 0, fill: '#cbd5e1', fontSize: 12 }}
+            />
+            <YAxis
+              stroke="#94a3b8"
+              tick={{ fontSize: 12 }}
+              label={{ value: dataKeyName, angle: -90, position: 'insideLeft', offset: -10, fill: '#cbd5e1', fontSize: 12 }}
+            />
             <Tooltip
               contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
               itemStyle={{ color: '#f8fafc' }}
+              labelFormatter={() => ''}
+              formatter={(value: number) => [value, dataKeyName]}
             />
             <Line
+              name={dataKeyName}
               type="monotone"
               dataKey={widget.config.dataKey!}
               stroke={widget.config.color || '#3b82f6'}
@@ -221,6 +255,7 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[] }> = ({ wi
             <Tooltip
               contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
               itemStyle={{ color: '#f8fafc' }}
+              formatter={(value: number, name: string) => [value, name]}
             />
             <Legend />
           </PieChart>
@@ -274,8 +309,9 @@ const CreateDashboardModal: React.FC<{ onClose: () => void; onSave: (name: strin
 const ExpandedWidgetModal: React.FC<{
   widget: DashboardWidget;
   data: any[];
+  dataset?: any;
   onClose: () => void;
-}> = ({ widget, data, onClose }) => {
+}> = ({ widget, data, dataset, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4 md:p-8">
       <div className="bg-slate-900 border border-slate-700 w-full h-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-fade-in relative">
@@ -290,7 +326,7 @@ const ExpandedWidgetModal: React.FC<{
             <p className="text-slate-400 mt-1">Full screen view</p>
           </div>
           <div className="flex-1 min-h-0 bg-slate-800/30 rounded-xl border border-slate-700/50 p-6">
-            <WidgetRenderer widget={widget} data={data} />
+            <WidgetRenderer widget={widget} data={data} dataset={dataset} />
           </div>
         </div>
       </div>
@@ -429,7 +465,7 @@ const WidgetBuilderModal: React.FC<{
                       className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">Select Column</option>
-                      {visibleColumns.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      {visibleColumns.map(c => <option key={c.name} value={c.name}>{c.displayName || c.name}</option>)}
                     </select>
                   </div>
                 )}
@@ -443,7 +479,7 @@ const WidgetBuilderModal: React.FC<{
                       className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="">Select Numeric Column</option>
-                      {visibleColumns.filter(c => c.type === 'number').map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      {visibleColumns.filter(c => c.type === 'number').map(c => <option key={c.name} value={c.name}>{c.displayName || c.name}</option>)}
                     </select>
                   </div>
                 )}
@@ -524,6 +560,7 @@ const WidgetBuilderModal: React.FC<{
                         h: height
                       }}
                       data={selectedDataset.data}
+                      dataset={selectedDataset}
                     />
                   </div>
                 </div>
@@ -1045,6 +1082,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
           <ExpandedWidgetModal
             widget={expandedWidget.widget}
             data={expandedWidget.dataset.data}
+            dataset={expandedWidget.dataset}
             onClose={() => setExpandedWidgetId(null)}
           />
         )}
@@ -1243,7 +1281,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                             </div>
                           )}
                           <div className="flex-1 min-h-0 w-full">
-                            <WidgetRenderer widget={widget} data={filteredData} />
+                            <WidgetRenderer widget={widget} data={filteredData} dataset={dataset} />
                           </div>
                         </div>
                       )}
