@@ -339,3 +339,64 @@ export const queryDataset = async (req, res) => {
     }
 };
 
+export const saveSqlView = async (req, res) => {
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Only admins can save SQL views.' });
+    }
+    const { name, description, sourceDatasetId, query, staticData } = req.body;
+    try {
+        const sourceDataset = await Dataset.findOne({ id: sourceDatasetId });
+        if (!sourceDataset) return res.status(404).json({ message: 'Source dataset not found' });
+
+        const datasetId = `ds_view_${Date.now()}`;
+        let newDatasetPayload = {
+            id: datasetId,
+            name,
+            description: description || `Created from ${sourceDataset.name}`,
+            accessPolicies: [
+                { role: 'ADMIN', canView: true, canEdit: true, restrictedColumns: [] },
+                { role: 'ANALYST', canView: true, canEdit: false, restrictedColumns: [] },
+                { role: 'VIEWER', canView: true, canEdit: false, restrictedColumns: [] }
+            ]
+        };
+
+        if (sourceDataset.isLive) {
+            newDatasetPayload = {
+                ...newDatasetPayload,
+                sourceType: sourceDataset.sourceType,
+                connectionConfig: sourceDataset.connectionConfig,
+                sourceMetadata: query,
+                isLive: true,
+                columns: staticData && staticData.length > 0 ? Object.keys(staticData[0]).map(k => ({
+                    name: k,
+                    type: typeof staticData[0][k] === 'number' ? 'number' : (typeof staticData[0][k] === 'boolean' ? 'boolean' : 'string'),
+                    description: k
+                })) : [],
+                data: []
+            };
+        } else {
+            if (!staticData || staticData.length === 0) {
+                return res.status(400).json({ message: 'Static query results are required to save an in-memory view.' });
+            }
+            newDatasetPayload = {
+                ...newDatasetPayload,
+                sourceType: 'json',
+                connectionConfig: '',
+                sourceMetadata: `Export from ${sourceDataset.name}`,
+                isLive: false,
+                columns: Object.keys(staticData[0]).map(k => ({
+                    name: k,
+                    type: typeof staticData[0][k] === 'number' ? 'number' : (typeof staticData[0][k] === 'boolean' ? 'boolean' : 'string'),
+                    description: k
+                })),
+                data: staticData
+            };
+        }
+
+        const newDataset = await Dataset.create(newDatasetPayload);
+        await deleteCache('catalog:list');
+        res.status(201).json(newDataset);
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to save SQL view: ' + e.message });
+    }
+};

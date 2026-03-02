@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Dataset } from '../types';
-import { Play, Sparkles, Database, Copy, ChevronDown, Loader2 } from 'lucide-react';
+import { Play, Sparkles, Database, Copy, ChevronDown, Loader2, Save, X } from 'lucide-react';
 import { generateQueryFromNaturalLanguage } from '../services/geminiService';
 import { useDatasetContext } from '../context/DatasetContext';
 import { api } from '../services/api';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 interface EditorProps {
   datasets: Dataset[];
@@ -219,6 +221,12 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [execTime, setExecTime] = useState<number | null>(null);
 
+  // New Features States
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saveDesc, setSaveDesc] = useState('');
+  const [savingDataset, setSavingDataset] = useState(false);
+
   const selectedDataset = datasets.find(d => d.id === selectedDatasetId);
   const isLiveDB = ['postgres', 'mysql'].includes(selectedDataset?.sourceType || '');
   const isMongo = selectedDataset?.sourceType === 'mongodb';
@@ -314,6 +322,30 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
     setTimeout(() => setCopyFeedback(false), 1500);
   };
 
+  const handleSaveView = async () => {
+    if (!saveName.trim() || !selectedDataset || !query.trim()) return;
+    setSavingDataset(true);
+    try {
+      await api.datasets.createSqlView({
+        name: saveName,
+        description: saveDesc,
+        sourceDatasetId: selectedDataset.id,
+        query,
+        staticData: results || []
+      });
+      setShowSaveModal(false);
+      setSaveName('');
+      setSaveDesc('');
+      // In a real scenario, we'd trigger a context refresh here to make the new dataset appear.
+      // E.g., fetchDatasets()
+      alert('View saved successfully as a new dataset!');
+    } catch (e: any) {
+      alert(e.message || 'Failed to save view');
+    } finally {
+      setSavingDataset(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-900 text-slate-200 relative">
       {/* Toolbar */}
@@ -357,6 +389,17 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
             {loadingQuery ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
             <span>{loadingQuery ? 'Running...' : 'Run'}</span>
           </button>
+
+          {results && results.length > 0 && (
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md text-sm font-medium border border-slate-700 transition-colors"
+            >
+              <Save size={16} />
+              <span>Save as Dataset</span>
+            </button>
+          )}
+
           <span className="text-xs text-slate-600">Ctrl+Enter</span>
         </div>
 
@@ -437,7 +480,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
             <div className="flex-1 overflow-auto relative">
               {/* Loading */}
               {loadingQuery && (
-                <div className="flex items-center justify-center p-8 text-slate-500 gap-2">
+                <div className="flex items-center justify-center p-8 text-slate-500 gap-2 h-full">
                   <Loader2 size={20} className="animate-spin text-blue-500" />
                   <span>Running query...</span>
                 </div>
@@ -445,17 +488,18 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
 
               {/* Error */}
               {!loadingQuery && error && (
-                <div className="p-6 text-red-400 text-sm">
-                  <p className="font-semibold mb-1">Error</p>
-                  <p className="font-mono text-xs bg-red-500/10 border border-red-500/20 p-3 rounded">{error}</p>
+                <div className="p-6 text-red-400 text-sm h-full overflow-y-auto">
+                  <p className="font-semibold mb-1 flex items-center gap-2"><X size={16} /> Error</p>
+                  <p className="font-mono text-xs bg-red-500/10 border border-red-500/20 p-3 rounded break-all whitespace-pre-wrap">{error}</p>
                 </div>
               )}
 
-              {/* Empty prompt */}
+              {/* Empty state */}
               {!loadingQuery && !results && !error && (
-                <div className="p-8 text-center text-slate-600">
+                <div className="flex items-center justify-center h-full text-slate-600 flex-col">
+                  <Database size={32} className="mb-3 opacity-20" />
                   <p>Run a query to see results</p>
-                  <p className="text-xs mt-1 text-slate-700">Press <kbd className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-xs border border-slate-700">Ctrl+Enter</kbd> to run</p>
+                  <p className="text-xs mt-2 text-slate-700">Press <kbd className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-xs border border-slate-700 font-sans">Ctrl+Enter</kbd> to execute</p>
                 </div>
               )}
 
@@ -524,16 +568,16 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
                     </span>
                     {ds.sourceType && (
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5 inline-block border ${ds.sourceType === 'mongodb'
-                          ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                          : ds.sourceType === 'postgres'
-                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                            : ds.sourceType === 'mysql'
-                              ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                              : ds.sourceType === 'xlsx'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : ds.sourceType === 'json'
-                                  ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                                  : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                        ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+                        : ds.sourceType === 'postgres'
+                          ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                          : ds.sourceType === 'mysql'
+                            ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                            : ds.sourceType === 'xlsx'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : ds.sourceType === 'json'
+                                ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                                : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                         }`}>
                         {ds.sourceType}
                       </span>
@@ -561,6 +605,50 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
           </div>
         </div>
       </div>
+
+      {/* Save View Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-2">Save Query as Dataset</h3>
+            <p className="text-sm text-slate-400 mb-6">Create a new dataset from the results of this query. It will be available in the Data Catalog and can be used in Dashboards.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Dataset Name</label>
+                <input
+                  autoFocus
+                  className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="e.g. Q3 Regional Sales"
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Description</label>
+                <textarea
+                  className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  placeholder="Optional description"
+                  rows={3}
+                  value={saveDesc}
+                  onChange={e => setSaveDesc(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button disabled={savingDataset} onClick={() => setShowSaveModal(false)} className="text-slate-400 hover:text-white px-4 py-2 disabled:opacity-50">Cancel</button>
+              <button
+                disabled={!saveName.trim() || savingDataset}
+                onClick={handleSaveView}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded font-medium disabled:opacity-50 min-w-[80px] flex justify-center items-center"
+              >
+                {savingDataset ? <Loader2 size={18} className="animate-spin" /> : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,5 +12,6 @@ router.delete('/:id', datasetController.deleteDataset);
 
 router.post('/upload', upload.single('file'), datasetController.uploadFile);
 router.post('/external', datasetController.saveExternalDataset);
+router.post('/sqlview', datasetController.saveSqlView);
 
 export default router;

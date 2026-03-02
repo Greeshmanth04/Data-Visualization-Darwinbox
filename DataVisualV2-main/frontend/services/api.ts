@@ -206,6 +206,11 @@ export const api = {
             body: JSON.stringify(dataset)
         }),
 
+        createSqlView: (payload: { name: string, description: string, sourceDatasetId: string, query: string, staticData: any[] }) => request<Dataset>('/datasets/sqlview', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }),
+
         // Query a live dataset by its ID — backend handles decryption
         queryDataset: (datasetId: string, query: string) => request<{ data: any[] }>(`/datasource/dataset/${datasetId}/query`, {
             method: 'POST',
