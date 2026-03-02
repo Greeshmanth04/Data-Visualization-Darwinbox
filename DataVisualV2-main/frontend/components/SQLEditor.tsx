@@ -263,8 +263,8 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
         setResults(res.data);
       } else if (isMongo) {
         // MongoDB: use the dataset's id to query via the backend
-        const res = await api.datasets.queryDataset(selectedDataset.id, 'find');
-        setResults(res.data.slice(0, 100));
+        const res = await api.datasets.queryDataset(selectedDataset.id, query);
+        setResults(res.data);
       } else {
         // In-memory SQL for csv / json / xlsx
         if (!selectedDataset.data || selectedDataset.data.length === 0) {

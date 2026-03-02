@@ -324,7 +324,37 @@ export const queryDataset = async (req, res) => {
             await mongoClient.connect();
             try {
                 const col = mongoClient.db(config.database).collection(collection || dataset.sourceMetadata);
-                const rows = await col.find({}).limit(500).toArray();
+
+                // Parse the MongoDB query string if provided, assume it's like db.collection.find({}) or just find({})
+                let queryObj = {};
+                let limit = 500;
+
+                try {
+                    // Very basic parsing for `{...}` inside find()
+                    const findMatch = query.match(/find\s*\((.*?)\)/s);
+                    if (findMatch && findMatch[1].trim()) {
+                        const cleanStr = findMatch[1].trim();
+                        if (cleanStr && cleanStr !== '{}') {
+                            try {
+                                // To support unquoted keys e.g { age: 25 }, we can use a relaxed parser or eval
+                                // Safest quick approach in this context without new dims is Function
+                                queryObj = new Function(`return ${cleanStr}`)();
+                            } catch (e) {
+                                console.log("Failed relaxed mongo JSON parse, using {}, reason:", e.message);
+                            }
+                        }
+                    }
+
+                    const limitMatch = query.match(/limit\s*\(\s*(\d+)\s*\)/i);
+                    if (limitMatch && limitMatch[1]) {
+                        limit = parseInt(limitMatch[1], 10);
+                    }
+                } catch (pe) {
+                    console.log("Failed to parse mongo query:", pe.message);
+                    // fallback to {}
+                }
+
+                const rows = await col.find(queryObj).limit(limit).toArray();
                 res.json({ data: rows });
             } finally {
                 await mongoClient.close().catch(() => { });
