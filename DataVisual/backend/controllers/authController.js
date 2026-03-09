@@ -1,13 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/index.js';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
 const generateToken = (user) => {
-    if (!JWT_SECRET) throw new Error('JWT_SECRET is not configured');
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET is not configured');
     return jwt.sign(
         { userId: user.id, role: user.role },
-        JWT_SECRET,
+        secret,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
 };
