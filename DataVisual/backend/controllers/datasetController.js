@@ -1,7 +1,7 @@
 import { Dataset } from '../models/index.js';
 import { getCache, setCache, deleteCache } from '../utils/cacheService.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
-import { withMysql, withPostgres, withMongo, inferType } from '../utils/dbHelpers.js';
+import { withMysql, withPostgres, withMongo, dbNameFromUri, inferType } from '../utils/dbHelpers.js';
 import { applyRowPolicies } from '../middleware/rbacMiddleware.js';
 import * as XLSX from 'xlsx';
 import csv from 'csv-parser';

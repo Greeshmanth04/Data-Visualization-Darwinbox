@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 dotenv.config();
+
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/darwin_visualize';
 
 const UserSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -15,10 +17,10 @@ const UserSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', UserSchema);
 
-async function createAdmin() {
+async function seedAdmin() {
     try {
-        await mongoose.connect(process.env.MONGODB_URI);
-        const email = 'admin@example.com';
+        await mongoose.connect(MONGO_URI);
+        const email = 'admin@gmail.com';
         const existing = await User.findOne({ email });
 
         if (existing) {
@@ -32,21 +34,21 @@ async function createAdmin() {
             const hashedPassword = await bcrypt.hash('admin123', salt);
 
             await User.create({
-                id: 'u_admin',
-                name: 'Admin User',
+                id: 'admin_01',
+                name: 'System Admin',
                 email,
                 password: hashedPassword,
                 role: 'ADMIN',
                 status: 'active',
-                avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=3b82f6&color=fff'
+                avatar: 'https://ui-avatars.com/api/?name=System+Admin&background=3b82f6&color=fff'
             });
-            console.log('Admin created: admin@example.com / admin123');
+            console.log('Admin created: admin@gmail.com / admin123');
         }
         process.exit(0);
     } catch (e) {
-        console.error(e);
+        console.error('Failed to seed admin:', e.message);
         process.exit(1);
     }
 }
 
-createAdmin();
+seedAdmin();

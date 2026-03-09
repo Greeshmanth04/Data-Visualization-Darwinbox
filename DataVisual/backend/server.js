@@ -6,7 +6,6 @@ import cors from 'cors';
 import { connectDB } from './config/db.js';
 import authMiddleware from './middleware/authMiddleware.js';
 
-// Route Imports
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import datasetRoutes from './routes/datasetRoutes.js';
@@ -18,22 +17,30 @@ import connectionRoutes from './routes/connectionRoutes.js';
 import cacheRoutes from './routes/cacheRoutes.js';
 import schemaRoutes from './routes/schemaRoutes.js';
 
+// Validate critical environment variables at startup
+const REQUIRED_ENV = ['JWT_SECRET'];
+const missing = REQUIRED_ENV.filter(key => !process.env[key]);
+if (missing.length > 0) {
+  console.warn(`[Config] Missing environment variables: ${missing.join(', ')}. Some features may fail.`);
+}
+
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('[Config] GEMINI_API_KEY not set — AI features will be unavailable.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Database Connection
 connectDB();
 
-// Routes
-// Auth routes are PUBLIC (login & register don't need a token)
+// Public routes
 app.use('/api/auth', authRoutes);
 
-// All other routes are PROTECTED by JWT middleware
+// Protected routes
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/datasets', authMiddleware, datasetRoutes);
 app.use('/api/datasource', authMiddleware, datasourceRoutes);
@@ -44,11 +51,10 @@ app.use('/api/connections', authMiddleware, connectionRoutes);
 app.use('/api/cache', authMiddleware, cacheRoutes);
 app.use('/api/schema', authMiddleware, schemaRoutes);
 
-// Health Check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
-// Global Error Handler
-app.use((err, req, res, _next) => {
+// Express 5 requires exactly 4 parameters for error-handling middleware
+app.use((err, _req, res, _next) => {
   console.error('[Server Error]', err.message);
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error'

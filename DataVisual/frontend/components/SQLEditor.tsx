@@ -5,8 +5,6 @@ import { generateQueryFromNaturalLanguage } from '../services/geminiService';
 import { useDatasetContext } from '../context/DatasetContext';
 import { api } from '../services/api';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-
 interface EditorProps {
   datasets: Dataset[];
 }
@@ -244,7 +242,6 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
   const isLiveDB = ['postgres', 'mysql'].includes(selectedDataset?.sourceType || '');
   const isMongo = selectedDataset?.sourceType === 'mongodb';
 
-  // Set default query when dataset changes
   useEffect(() => {
     if (selectedDataset) {
       if (isMongo) {
@@ -256,7 +253,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
       setError(null);
       setExecTime(null);
     }
-  }, [selectedDatasetId, datasets]);
+  }, [selectedDatasetId, datasets, isMongo, selectedDataset]);
 
   const executeQuery = useCallback(async () => {
     if (!selectedDataset) {

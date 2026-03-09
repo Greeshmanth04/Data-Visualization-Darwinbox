@@ -25,6 +25,6 @@ const DashboardSchema = new mongoose.Schema({
         userId: String,
         accessLevel: { type: String, enum: ['view', 'edit'], default: 'view' }
     }]
-}, { id: false });
+}, { id: false, timestamps: true });
 
 export const Dashboard = mongoose.model('Dashboard', DashboardSchema);

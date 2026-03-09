@@ -35,6 +35,6 @@ const DatasetSchema = new mongoose.Schema({
     connectionConfig: String, // Encrypted string
     sourceMetadata: mongoose.Schema.Types.Mixed, // Table name, collection name, or query
     isLive: { type: Boolean, default: false }
-}, { id: false });
+}, { id: false, timestamps: true });
 
 export const Dataset = mongoose.model('Dataset', DatasetSchema);

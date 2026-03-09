@@ -68,7 +68,7 @@ const ShareModal: React.FC<{
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
-          </div>ArrowRight
+          </div>
 
           <div>
             <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Access Level</label>

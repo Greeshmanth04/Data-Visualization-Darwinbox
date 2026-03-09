@@ -1,6 +1,7 @@
 import { CrossDatabaseRelationship, SchemaAuditLog, DatabaseConnection, Dataset } from '../models/index.js';
 import { decrypt } from '../utils/encryption.js';
 import { withMysql, withPostgres, withMongo, dbNameFromUri, inferType } from '../utils/dbHelpers.js';
+import alasql from 'alasql';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -255,7 +256,6 @@ export const createMergedDataset = async (req, res) => {
 };
 
 // ── Virtual SQL Engine (Cross-DB Joins & Aggregations) ─────────────────────
-import alasql from 'alasql';
 
 /**
  * Execute a SQL query across multiple database connections.

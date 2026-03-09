@@ -3,7 +3,6 @@ import { Dataset, AIAnalysisResult, UserRole, AccessPolicy, User, RowPolicy } fr
 import { Search, Database, Table, Calendar, Type, Hash, Shield, X, Check, Lock, Unlock, Eye, EyeOff, AlertTriangle, Upload, Trash2, Plus, ChevronDown, CheckCircle2, Zap, Clock, LayoutDashboard, RefreshCw, Layers, Workflow, Edit2, Save } from 'lucide-react';
 import { api } from '../services/api';
 import { useDatasetContext } from '../context/DatasetContext';
-import SchemaView from './SchemaView';
 
 interface DataCatalogProps {
   datasets: Dataset[];
@@ -892,15 +891,12 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
     return String(val);
   }, []);
 
-  // Sync selectedDataset when datasets prop updates
   useEffect(() => {
     if (selectedDataset) {
       const updated = datasets.find(d => d.id === selectedDataset.id);
       if (updated) setSelectedDataset(updated);
     }
   }, [datasets]);
-
-
 
   const filteredDatasets = useMemo(() => {
     return datasets.filter(d =>
@@ -1112,8 +1108,8 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
                           try {
                             await api.datasets.delete(ds.id);
                             onRefreshDatasets?.();
-                          } catch (err) {
-                            alert("Failed to delete: " + err.message);
+                          } catch (err: any) {
+                            alert("Failed to delete: " + (err?.message || 'Unknown error'));
                           }
                         }
                       }}
@@ -1141,11 +1137,10 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
             ))}
           </div>
         )}
-      </div >
-
+      </div>
 
       {/* Detail View */}
-      < div className="flex-1 overflow-y-auto bg-slate-950 p-8" >
+      <div className="flex-1 overflow-y-auto bg-slate-950 p-8">
         {
           selectedDataset ? (
             canViewDataset ? (

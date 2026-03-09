@@ -9,7 +9,7 @@ const UserSchema = new mongoose.Schema({
     role: { type: String, enum: ['ADMIN', 'ANALYST', 'VIEWER'], default: 'ANALYST' },
     avatar: String,
     status: { type: String, enum: ['active', 'pending', 'rejected'], default: 'pending' }
-}, { id: false });
+}, { id: false, timestamps: true });
 
 // Hash password before saving (only if modified)
 UserSchema.pre('save', async function () {
