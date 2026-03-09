@@ -269,16 +269,37 @@ export const queryDataset = async (req, res) => {
             rows = await withPostgres(pgConn.connectionString || `postgres://${config.user}:${config.password}@${config.host}:${config.port}/${config.database}`, async c => (await c.query(query)).rows);
         } else if (sourceType === 'mongodb') {
             rows = await withMongo(config.uri, async c => {
-                const col = c.db(config.database).collection(config.collection || dataset.sourceMetadata);
-                let queryObj = {}, limit = 500;
-                try {
-                    const findMatch = query.match(/find\s*\((.*?)\)/s);
-                    if (findMatch?.[1]?.trim() && findMatch[1].trim() !== '{}') {
-                        try { queryObj = JSON.parse(findMatch[1].trim()); } catch { /* fallback to {} */ }
+                const dbName = config.database || dbNameFromUri(config.uri);
+                const collectionName = config.collection || dataset.sourceMetadata;
+                const col = c.db(dbName).collection(collectionName);
+
+                let queryObj = {};
+                let limit = 500;
+
+                // Enhanced parsing for find({...}) and aggregate([...])
+                const findMatch = query.match(/find\s*\(([\s\S]*?)\)/);
+                const aggregateMatch = query.match(/aggregate\s*\(([\s\S]*?)\)/);
+
+                if (aggregateMatch) {
+                    try {
+                        const pipeline = JSON.parse(aggregateMatch[1].trim());
+                        return col.aggregate(pipeline).toArray();
+                    } catch (e) {
+                        console.warn("[MongoDB Aggregate Parse Error]", e.message);
                     }
-                    const limitMatch = query.match(/limit\s*\(\s*(\d+)\s*\)/i);
-                    if (limitMatch?.[1]) limit = parseInt(limitMatch[1]);
-                } catch { /* fallback to {} */ }
+                }
+
+                if (findMatch) {
+                    try {
+                        queryObj = JSON.parse(findMatch[1].trim() || "{}");
+                    } catch (e) {
+                        console.warn("[MongoDB Find Parse Error]", e.message);
+                    }
+                }
+
+                const limitMatch = query.match(/limit\s*\(\s*(\d+)\s*\)/i);
+                if (limitMatch?.[1]) limit = parseInt(limitMatch[1]);
+
                 return col.find(queryObj).limit(limit).toArray();
             });
         } else {

@@ -880,7 +880,7 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
 
   // Helper to safely render values (handles objects/arrays from MongoDB)
-  const renderValue = (val: any) => {
+  const renderValue = React.useCallback((val: any) => {
     if (val === null || val === undefined) return "";
     if (typeof val === 'object') {
       try {
@@ -890,7 +890,7 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
       }
     }
     return String(val);
-  };
+  }, []);
 
   // Sync selectedDataset when datasets prop updates
   useEffect(() => {
@@ -902,17 +902,31 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
 
 
 
-  const filteredDatasets = datasets.filter(d =>
-    d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDatasets = useMemo(() => {
+    return datasets.filter(d =>
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.description.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [datasets, searchTerm]);
 
 
 
-  const handleSavePermissions = (accessPolicies: AccessPolicy[], rowPolicies: RowPolicy[]) => {
-    if (!selectedDataset || !onUpdateDataset) return;
-    onUpdateDataset({ ...selectedDataset, accessPolicies, rowPolicies });
-    setShowAccessModal(false);
+  const handleSavePermissions = async (accessPolicies: AccessPolicy[], rowPolicies: RowPolicy[]) => {
+    if (!selectedDataset) return;
+    try {
+      // 1. Update general dataset metadata (including accessPolicies)
+      await api.datasets.update({ ...selectedDataset, accessPolicies });
+
+      // 2. Update dedicated row policies (ADMIN only)
+      if (currentUser?.role === UserRole.ADMIN) {
+        await api.datasets.updateRowPolicies(selectedDataset.id, rowPolicies);
+      }
+
+      onRefreshDatasets?.(); // Refresh the list to show updated policies
+      setShowAccessModal(false);
+    } catch (e) {
+      console.error("Failed to save permissions", e);
+    }
   };
 
   const handleStartEditColumn = (col: any) => {

@@ -672,7 +672,7 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
           {/* Summary */}
           <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 p-6 rounded-xl border border-purple-500/20">
             <h3 className="text-lg font-semibold text-white mb-3">Executive Summary</h3>
-            <p className="text-slate-300 leading-relaxed">{result.summary}</p>
+            <p className="text-slate-300 leading-relaxed">{result?.summary || "No summary available."}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -683,12 +683,13 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
                 Key Trends
               </h3>
               <ul className="space-y-4">
-                {result.trends.map((trend, i) => (
+                {(result?.trends || []).map((trend, i) => (
                   <li key={i} className="group">
                     <div className="font-medium text-slate-200 mb-1 group-hover:text-blue-300 transition-colors">{trend.title}</div>
                     <div className="text-sm text-slate-400">{trend.description}</div>
                   </li>
                 ))}
+                {(!result?.trends || result.trends.length === 0) && <li className="text-slate-500 italic">No trends identified.</li>}
               </ul>
             </div>
 
@@ -699,7 +700,7 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
                 Anomalies Detected
               </h3>
               <ul className="space-y-4">
-                {result.anomalies.map((anomaly, i) => (
+                {(result?.anomalies || []).map((anomaly, i) => (
                   <li key={i} className="relative pl-4 border-l-2 border-slate-600">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-slate-200">{anomaly.title}</span>
@@ -710,7 +711,7 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
                     <div className="text-sm text-slate-400">{anomaly.description}</div>
                   </li>
                 ))}
-                {result.anomalies.length === 0 && <li className="text-slate-500 italic">No significant anomalies detected.</li>}
+                {(!result?.anomalies || result.anomalies.length === 0) && <li className="text-slate-500 italic">No significant anomalies detected.</li>}
               </ul>
             </div>
           </div>
@@ -722,7 +723,7 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
               Correlations
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {result.correlations.map((corr, i) => (
+              {(result?.correlations || []).map((corr, i) => (
                 <div key={i} className="bg-slate-900 p-4 rounded-lg border border-slate-700">
                   <div className="flex items-center space-x-2 text-sm text-slate-300 font-mono mb-2">
                     <span className="bg-slate-800 px-2 py-1 rounded">{corr.factor1}</span>
@@ -732,7 +733,7 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
                   <p className="text-sm text-slate-400">{corr.description}</p>
                 </div>
               ))}
-              {result.correlations.length === 0 && <p className="text-slate-500 italic">No strong correlations found.</p>}
+              {(!result?.correlations || result.correlations.length === 0) && <p className="text-slate-500 italic">No strong correlations found.</p>}
             </div>
           </div>
 
@@ -743,12 +744,13 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
               Recommended Actions
             </h3>
             <ul className="space-y-3">
-              {result.recommendations.map((rec, i) => (
+              {(result?.recommendations || []).map((rec, i) => (
                 <li key={i} className="flex items-start text-slate-300 text-sm">
                   <span className="mr-3 text-yellow-500 mt-1">•</span>
                   <span>{rec}</span>
                 </li>
               ))}
+              {(!result?.recommendations || result.recommendations.length === 0) && <li className="text-slate-500 italic">No recommendations available.</li>}
             </ul>
           </div>
         </div>

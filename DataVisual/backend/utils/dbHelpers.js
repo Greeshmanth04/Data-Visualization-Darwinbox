@@ -70,12 +70,14 @@ export const inferType = (val) =>
             : 'string';
 
 /** Build a columns array from the first row of data. */
-export const buildColumns = (firstRow) =>
-    Object.keys(firstRow).map(k => ({
-        name: k,
-        type: inferType(firstRow[k]),
-        description: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ')
+export const buildColumns = (firstRow) => {
+    if (!firstRow) return [];
+    return Object.entries(firstRow).map(([name, value]) => ({
+        name,
+        type: inferType(value),
+        description: name.charAt(0).toUpperCase() + name.slice(1).replace(/[/_]/g, ' ')
     }));
+};
 
 /** Extract the database name from a URI's pathname. */
 export const dbNameFromUri = (uri) => {

@@ -14,21 +14,38 @@
  * @returns {boolean}
  */
 const evalPolicy = (row, policy) => {
-    const { column, operator, value } = policy;
-    const cellRaw = row[column];
+    const { column, operator, value: policyValue } = policy;
+    const cellValue = row[column];
 
-    // Cast for numeric comparisons
-    const cell = typeof value === 'number' ? Number(cellRaw) : cellRaw;
+    // Helper to normalize values for comparison
+    const normalize = (val) => {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'boolean') return val;
+        // If policy value is numeric, try to treat cell as number
+        if (typeof policyValue === 'number' && !isNaN(Number(val))) return Number(val);
+        // If policy value is boolean-ish and cell is boolean-ish
+        if (typeof policyValue === 'boolean') {
+            if (typeof val === 'string') {
+                if (val.toLowerCase() === 'true') return true;
+                if (val.toLowerCase() === 'false') return false;
+            }
+        }
+        return String(val).toLowerCase();
+    };
+
+    const cell = normalize(cellValue);
+    const target = typeof policyValue === 'string' ? policyValue.toLowerCase() : policyValue;
 
     switch (operator) {
-        case 'eq': return cell == value;                                        // loose equality handles string/number mix
-        case 'neq': return cell != value;
-        case 'contains': return String(cellRaw ?? '').toLowerCase().includes(String(value).toLowerCase());
-        case 'gt': return cell > value;
-        case 'lt': return cell < value;
-        case 'gte': return cell >= value;
-        case 'lte': return cell <= value;
-        default: return true; // unknown operator → permissive
+        case 'eq': return cell === target;
+        case 'neq': return cell !== target;
+        case 'contains':
+            return String(cellValue ?? '').toLowerCase().includes(String(policyValue).toLowerCase());
+        case 'gt': return cell > target;
+        case 'lt': return cell < target;
+        case 'gte': return cell >= target;
+        case 'lte': return cell <= target;
+        default: return true;
     }
 };
 

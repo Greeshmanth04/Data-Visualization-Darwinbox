@@ -10,31 +10,34 @@ const fetchMysqlSchema = (uri) => withMysql(uri, async (conn) => {
     const [tableRows] = await conn.query(
         'SELECT table_name FROM information_schema.tables WHERE table_schema = ?', [dbName]
     );
-    const tables = [];
-    for (const row of tableRows) {
+
+    const tables = await Promise.all(tableRows.map(async (row) => {
         const name = row.TABLE_NAME || row.table_name;
-        const [colRows] = await conn.query(
-            'SELECT column_name, data_type, column_key FROM information_schema.columns WHERE table_schema = ? AND table_name = ?',
-            [dbName, name]
-        );
-        const [fkRows] = await conn.query(
-            'SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE referenced_table_name IS NOT NULL AND table_schema = ? AND table_name = ?',
-            [dbName, name]
-        );
-        tables.push({
+        const [colRows, fkRows] = await Promise.all([
+            conn.query(
+                'SELECT column_name, data_type, column_key FROM information_schema.columns WHERE table_schema = ? AND table_name = ?',
+                [dbName, name]
+            ),
+            conn.query(
+                'SELECT column_name, referenced_table_name, referenced_column_name FROM information_schema.key_column_usage WHERE referenced_table_name IS NOT NULL AND table_schema = ? AND table_name = ?',
+                [dbName, name]
+            )
+        ]);
+
+        return {
             name,
-            columns: colRows.map(c => ({
+            columns: colRows[0].map(c => ({
                 name: c.COLUMN_NAME || c.column_name,
                 type: c.DATA_TYPE || c.data_type,
                 isPrimaryKey: (c.COLUMN_KEY || c.column_key) === 'PRI'
             })),
-            foreignKeys: fkRows.map(fk => ({
+            foreignKeys: fkRows[0].map(fk => ({
                 column: fk.COLUMN_NAME || fk.column_name,
                 referenceTable: fk.REFERENCED_TABLE_NAME || fk.referenced_table_name,
                 referenceColumn: fk.REFERENCED_COLUMN_NAME || fk.referenced_column_name
             }))
-        });
-    }
+        };
+    }));
     return tables;
 });
 
@@ -42,48 +45,50 @@ const fetchPostgresSchema = (uri) => withPostgres(uri, async (client) => {
     const { rows: tableRows } = await client.query(
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
     );
-    const tables = [];
-    for (const { table_name } of tableRows) {
-        const { rows: colRows } = await client.query(
-            'SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
-            ['public', table_name]
-        );
-        const { rows: pkRows } = await client.query(
-            `SELECT kcu.column_name FROM information_schema.table_constraints tc
-             JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-             WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_name = $1`, [table_name]
-        );
-        const pkCols = new Set(pkRows.map(r => r.column_name));
-        const { rows: fkRows } = await client.query(
-            `SELECT kcu.column_name, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name
-             FROM information_schema.table_constraints tc
-             JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
-             JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
-             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1`, [table_name]
-        );
-        tables.push({
+
+    const tables = await Promise.all(tableRows.map(async ({ table_name }) => {
+        const [colRes, pkRes, fkRes] = await Promise.all([
+            client.query(
+                'SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2',
+                ['public', table_name]
+            ),
+            client.query(
+                `SELECT kcu.column_name FROM information_schema.table_constraints tc
+                 JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                 WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_name = $1`, [table_name]
+            ),
+            client.query(
+                `SELECT kcu.column_name, ccu.table_name AS foreign_table_name, ccu.column_name AS foreign_column_name
+                 FROM information_schema.table_constraints tc
+                 JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                 JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
+                 WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1`, [table_name]
+            )
+        ]);
+
+        const pkCols = new Set(pkRes.rows.map(r => r.column_name));
+        return {
             name: table_name,
-            columns: colRows.map(c => ({ name: c.column_name, type: c.data_type, isPrimaryKey: pkCols.has(c.column_name) })),
-            foreignKeys: fkRows.map(fk => ({ column: fk.column_name, referenceTable: fk.foreign_table_name, referenceColumn: fk.foreign_column_name }))
-        });
-    }
+            columns: colRes.rows.map(c => ({ name: c.column_name, type: c.data_type, isPrimaryKey: pkCols.has(c.column_name) })),
+            foreignKeys: fkRes.rows.map(fk => ({ column: fk.column_name, referenceTable: fk.foreign_table_name, referenceColumn: fk.foreign_column_name }))
+        };
+    }));
     return tables;
 });
 
 const fetchMongodbSchema = (uri) => withMongo(uri, async (client) => {
     const db = client.db(dbNameFromUri(uri));
     const collections = await db.listCollections().toArray();
-    const tables = [];
-    for (const { name } of collections) {
+    const tables = await Promise.all(collections.map(async ({ name }) => {
         const docs = await db.collection(name).find({}).limit(50).toArray();
         const fields = new Set();
         docs.forEach(d => Object.keys(d).forEach(k => fields.add(k)));
-        tables.push({
+        return {
             name,
             columns: [...fields].map(k => ({ name: k, type: k === '_id' ? 'ObjectId' : 'Mixed', isPrimaryKey: k === '_id' })),
             foreignKeys: []
-        });
-    }
+        };
+    }));
     return tables;
 });
 
