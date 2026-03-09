@@ -3,12 +3,8 @@ import { decrypt } from '../utils/encryption.js';
 import { withMysql, withPostgres, withMongo, dbNameFromUri, inferType } from '../utils/dbHelpers.js';
 import alasql from 'alasql';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Strip Mongoose internals from a document. */
 const clean = (doc) => { const o = doc.toObject(); delete o._id; delete o.__v; return o; };
 
-/** Fetch rows from a saved (encrypted) connection. */
 const fetchRows = async (conn, tableName, limit = 5000) => {
     const uri = decrypt(conn.uri);
     const lim = parseInt(limit);
@@ -25,10 +21,8 @@ const fetchRows = async (conn, tableName, limit = 5000) => {
     throw new Error(`Unsupported DB type: ${conn.type}`);
 };
 
-/** Normalize a join key value for comparison. */
 const normalizeKey = (v) => v == null ? '__null__' : String(v).trim();
 
-/** In-memory LEFT JOIN — always includes all target columns. */
 const joinRows = (srcRows, tgtRows, srcCol, tgtCol, tgtTable) => {
     const tgtPrefix = `${tgtTable}__`;
     const tgtColNames = tgtRows.length > 0 ? Object.keys(tgtRows[0]) : [];
@@ -76,14 +70,10 @@ const joinRows = (srcRows, tgtRows, srcCol, tgtCol, tgtTable) => {
     return { rows: merged, matchedCount, unmatchedCount: srcRows.length - matchedCount };
 };
 
-// ── Audit Logging ────────────────────────────────────────────────────────────
-
 const logSchemaAction = async (userId, action, details = {}) => {
     try { await SchemaAuditLog.create({ userId, action, details }); }
     catch (e) { console.error('[SchemaAudit] Failed to log action:', e.message); }
 };
-
-// ── Relationships CRUD ───────────────────────────────────────────────────────
 
 export const getRelationships = async (req, res) => {
     try {
@@ -164,8 +154,6 @@ export const deleteRelationship = async (req, res) => {
     }
 };
 
-// ── Audit Log ────────────────────────────────────────────────────────────────
-
 export const getAuditLog = async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 100;
@@ -175,8 +163,6 @@ export const getAuditLog = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch audit log: ' + e.message });
     }
 };
-
-// ── Execute live cross-DB join ───────────────────────────────────────────────
 
 export const executeJoin = async (req, res) => {
     const limit = Math.min(parseInt(req.body?.limit || 2000), 10000);
@@ -227,8 +213,6 @@ export const executeJoin = async (req, res) => {
     }
 };
 
-// ── Create merged dataset for dashboard ──────────────────────────────────────
-
 export const createMergedDataset = async (req, res) => {
     const { name, description, data, columns } = req.body;
     if (!name || !data || !columns) return res.status(400).json({ message: 'name, data, columns are required' });
@@ -255,12 +239,6 @@ export const createMergedDataset = async (req, res) => {
     }
 };
 
-// ── Virtual SQL Engine (Cross-DB Joins & Aggregations) ─────────────────────
-
-/**
- * Execute a SQL query across multiple database connections.
- * Example: SELECT ... FROM mysql_conn.orders JOIN pg_conn.customers ON ...
- */
 export const executeCrossDbQuery = async (req, res) => {
     const { query, limit = 5000 } = req.body;
     if (!query) return res.status(400).json({ message: 'query is required' });

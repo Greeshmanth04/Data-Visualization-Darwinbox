@@ -1,12 +1,11 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { Dashboard, DashboardWidget, Dataset, AIAnalysisResult, User, UserRole } from '../types';
 import { ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, Tooltip, CartesianGrid, Cell, Legend } from 'recharts';
-import { Maximize2, Sparkles, TrendingUp, AlertTriangle, Link as LinkIcon, Lightbulb, X, Plus, Trash2, Layout, BarChart3, PieChart as PieIcon, Table as TableIcon, Hash, Pencil, Check, GripHorizontal, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Share2, Users } from 'lucide-react';
+import { Maximize2, Sparkles, TrendingUp, AlertTriangle, Link as LinkIcon, Lightbulb, X, Plus, Trash2, Layout, BarChart3, PieChart as PieIcon, Hash, Pencil, Check, GripHorizontal, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Share2, Users, Download, FileText, Image as ImageIcon, Database as DataIcon } from 'lucide-react';
 import { analyzeDataset } from '../services/geminiService';
 import { api } from '../services/api';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Download, FileText, Image as ImageIcon, Database as DataIcon } from 'lucide-react';
 
 interface DashboardViewProps {
   dashboards: Dashboard[];
@@ -18,8 +17,6 @@ interface DashboardViewProps {
 }
 import { useDatasetContext } from '../context/DatasetContext';
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-
-// --- Sub-components ---
 
 const ShareModal: React.FC<{
   dashboard: Dashboard;
@@ -300,8 +297,6 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?:
 
   return <div className="text-gray-500">Widget type not supported</div>;
 };
-
-// --- Modals ---
 
 const CreateDashboardModal: React.FC<{ onClose: () => void; onSave: (name: string, desc: string) => void }> = ({ onClose, onSave }) => {
   const [name, setName] = useState('');
@@ -828,8 +823,6 @@ const AnalysisModal: React.FC<{ result: AIAnalysisResult; onClose: () => void }>
   );
 };
 
-// --- Main Component ---
-
 const DashboardView: React.FC<DashboardViewProps> = ({
   dashboards,
   datasets,
@@ -845,7 +838,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const [showWidgetModal, setShowWidgetModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Edit Mode State
   const [isEditMode, setIsEditMode] = useState(false);
   const [draggedWidgetIndex, setDraggedWidgetIndex] = useState<number | null>(null);
   const [expandedWidgetId, setExpandedWidgetId] = useState<string | null>(null);
@@ -899,8 +891,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     if (!currentDashboard || currentDashboard.widgets.length === 0) return;
     setIsExporting(true);
     try {
-      // For dashboard export, we'll export all data from the first widget's dataset
-      // or a combined view. For now, let's export the first widget's data.
       const firstWidget = currentDashboard.widgets[0];
       const dataset = datasets.find(d => d.id === firstWidget.datasetId);
       if (!dataset) return;
@@ -934,10 +924,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     setIsExporting(false);
   };
 
-  // Ensure active dashboard exists (handle deletion case)
   const currentDashboard = dashboards.find(d => d.id === activeDashboardId) || dashboards[0];
 
-  // Update active ID if current one was deleted or doesn't exist
   React.useEffect(() => {
     if (!dashboards.find(d => d.id === activeDashboardId) && dashboards.length > 0) {
       setActiveDashboardId(dashboards[0].id);
@@ -947,7 +935,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const handleDeepAnalysis = async () => {
     if (!currentDashboard) return;
     setLoadingAnalysis(true);
-    // Find dataset used in the first widget as a proxy for the context
     const mainDatasetId = currentDashboard.widgets[0]?.datasetId;
     const dataset = datasets.find(d => d.id === mainDatasetId);
 
@@ -960,7 +947,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
   const { activeDatasetId } = useDatasetContext();
 
-  // Fetch data from Redis for any widget whose datasetId is a cache key
   const [cacheDataMap, setCacheDataMap] = React.useState<Record<string, { rows: any[]; columns: any[] }>>({});
 
   React.useEffect(() => {
@@ -983,12 +969,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   }, [currentDashboard]);
 
   const handleCreateWidget = () => {
-    // Default to active dataset if available, else first in list
     const defaultDsId = activeDatasetId && datasets.some(d => d.id === activeDatasetId)
       ? activeDatasetId
       : datasets[0]?.id || '';
 
-    // Auto-detect columns for the selected dataset
     const selectedDs = datasets.find(d => d.id === defaultDsId);
     let defaultX = '';
     let defaultY = '';
@@ -1013,13 +997,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({
     };
 
     if (currentDashboard) {
-      // ... existing ADD logic ...
       const updated = {
         ...currentDashboard,
         widgets: [...currentDashboard.widgets, newWidget]
       };
       onUpdateDashboard(updated);
-      setActiveDashboardId(updated.id); // Refresh view
+      setActiveDashboardId(updated.id);
     }
   };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dataset, AIAnalysisResult, UserRole, AccessPolicy, User, RowPolicy } from '../types';
-import { Search, Database, Table, Calendar, Type, Hash, Shield, X, Check, Lock, Unlock, Eye, EyeOff, AlertTriangle, Upload, Trash2, Plus, ChevronDown, CheckCircle2, Zap, Clock, LayoutDashboard, RefreshCw, Layers, Workflow, Edit2, Save } from 'lucide-react';
+import { Dataset, UserRole, AccessPolicy, User, RowPolicy } from '../types';
+import { Search, Database, Table, Calendar, Type, Hash, Shield, X, Check, Lock, Eye, EyeOff, AlertTriangle, Upload, Trash2, Plus, ChevronDown, CheckCircle2, Zap, Clock, LayoutDashboard, RefreshCw, Layers, Edit2, Save } from 'lucide-react';
 import { api } from '../services/api';
 import { useDatasetContext } from '../context/DatasetContext';
 

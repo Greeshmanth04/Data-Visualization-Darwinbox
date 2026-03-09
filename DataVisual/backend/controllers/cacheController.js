@@ -3,8 +3,6 @@ import { withMysql, withPostgres, withMongo, dbNameFromUri, buildColumns } from 
 import { setDataCache, getDataCache, listDataCacheKeys, deleteDataCache } from '../utils/cacheService.js';
 import { Dashboard } from '../models/index.js';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function makeCacheKey(sourceType, sourceName) {
     const hash = crypto.createHash('sha1')
         .update(`${sourceType}:${sourceName}:${Date.now()}`)
@@ -12,7 +10,6 @@ function makeCacheKey(sourceType, sourceName) {
     return `data:${sourceType}:${hash}`;
 }
 
-/** Aggregate rows by a string column, summing a numeric column */
 const aggregate = (rows, groupCol, valueCol, maxEntries = 20) => {
     const map = {};
     rows.forEach(r => {
@@ -22,8 +19,6 @@ const aggregate = (rows, groupCol, valueCol, maxEntries = 20) => {
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, maxEntries)
         .map(([name, value]) => ({ name, value }));
 };
-
-// ── Controllers ──────────────────────────────────────────────────────────────
 
 export const cacheDatasource = async (req, res) => {
     const { sourceType, uri, table, collection, database, limit = 1000, ttl = 3600 } = req.body;

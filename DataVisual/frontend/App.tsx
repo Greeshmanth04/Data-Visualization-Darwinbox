@@ -19,7 +19,6 @@ const App: React.FC = () => {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
 
-  // Fetch Data on Load
   const fetchData = useCallback(() => {
     if (!user) return;
     api.datasets.getAll().then(setDatasets);
@@ -32,17 +31,14 @@ const App: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
-  // Check for existing session via JWT token
   useEffect(() => {
     const token = getToken();
     if (token) {
-      // Validate token by calling /api/auth/me
       api.auth.me()
         .then((userData) => {
           setUser(userData);
         })
         .catch(() => {
-          // Token invalid/expired — clear everything
           removeToken();
           localStorage.removeItem('darwin_session');
         })
@@ -50,7 +46,6 @@ const App: React.FC = () => {
           setLoading(false);
         });
     } else {
-      // No token — try localStorage session fallback (mock mode)
       const session = localStorage.getItem('darwin_session');
       if (session) {
         try {

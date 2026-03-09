@@ -7,21 +7,16 @@ import * as XLSX from 'xlsx';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Default access policies for new datasets. */
 const defaultPolicies = () => [
     { role: 'ADMIN', canView: true, canEdit: true, restrictedColumns: [] },
     { role: 'ANALYST', canView: true, canEdit: false, restrictedColumns: [] },
     { role: 'VIEWER', canView: true, canEdit: false, restrictedColumns: [] }
 ];
 
-/** Build column definitions from the first row of data. */
 const colsFromRow = (row) => Object.keys(row).map(k => ({
     name: k, type: inferType(row[k]), description: k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' ')
 }));
 
-/** Invalidate dataset caches (all roles). */
 const invalidateCache = async (datasetId) => {
     if (datasetId) {
         // Bust role-scoped cache keys so no stale row-filtered data is served
@@ -36,12 +31,9 @@ const invalidateCache = async (datasetId) => {
     }
 };
 
-/** Ensure only SELECT queries are executed. */
 const assertSelect = (query) => {
     if (!query?.toLowerCase().trim().startsWith('select')) throw new Error('Only SELECT queries are allowed');
 };
-
-// ── CRUD ─────────────────────────────────────────────────────────────────────
 
 export const getDatasets = async (req, res) => {
     try {
@@ -52,7 +44,6 @@ export const getDatasets = async (req, res) => {
 
         const datasets = await Dataset.find({});
 
-        // Filter data for each dataset according to row policies
         const filteredDatasets = datasets.map(ds => {
             const dsObj = ds.toObject();
             if (dsObj.data?.length) {
@@ -77,11 +68,8 @@ export const getDatasetById = async (req, res) => {
         const dataset = await Dataset.findOne({ id: req.params.id });
         if (!dataset) return res.status(404).json({ message: 'Dataset not found' });
 
-        // Apply row-level filtering before responding
         const datasetObj = dataset.toObject();
         datasetObj.data = applyRowPolicies(datasetObj.data, datasetObj.rowPolicies, role);
-
-        // Non-admins don't need to see the raw policy definitions
         if (role !== 'ADMIN') delete datasetObj.rowPolicies;
 
         await setCache(cacheKey, datasetObj, 3600);
@@ -94,7 +82,6 @@ export const updateDataset = async (req, res) => {
         const dataset = await Dataset.findOne({ id: req.params.id });
         if (!dataset) return res.status(404).json({ message: 'Dataset not found' });
 
-        // Admin-only: column type changes
         if (req.body.columns && dataset.columns) {
             const typeMap = Object.fromEntries(dataset.columns.map(c => [c.name, c.type]));
             if (req.body.columns.some(c => typeMap[c.name] && c.type !== typeMap[c.name]) && req.user?.role !== 'ADMIN') {
@@ -102,7 +89,6 @@ export const updateDataset = async (req, res) => {
             }
         }
 
-        // Only ADMINs may update rowPolicies via updateDataset (the dedicated endpoint is preferred)
         const editableFields = ['name', 'description', 'columns', 'accessPolicies'];
         if (req.user?.role === 'ADMIN') editableFields.push('rowPolicies');
         editableFields.forEach(f => {
@@ -124,8 +110,6 @@ export const deleteDataset = async (req, res) => {
         res.json({ message: 'Deleted' });
     } catch (e) { res.status(500).json({ message: e.message }); }
 };
-
-// ── MongoDB exploration ──────────────────────────────────────────────────────
 
 export const getMongoDatabases = async (req, res) => {
     try {
@@ -155,8 +139,6 @@ export const previewMongoData = async (req, res) => {
         res.json({ data });
     } catch (e) { res.status(400).json({ message: 'Failed to preview data: ' + e.message }); }
 };
-
-// ── SQL exploration ──────────────────────────────────────────────────────────
 
 export const connectSql = async (req, res) => {
     const { type, uri } = req.body;
@@ -191,8 +173,6 @@ export const querySql = async (req, res) => {
         res.json({ data: rows });
     } catch (e) { res.status(400).json({ message: 'Query failed: ' + e.message }); }
 };
-
-// ── Dataset creation ─────────────────────────────────────────────────────────
 
 export const saveExternalDataset = async (req, res) => {
     if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can add datasets.' });
@@ -244,8 +224,6 @@ export const uploadFile = async (req, res) => {
     } catch (e) { res.status(500).json({ message: 'Failed to process file: ' + e.message }); }
 };
 
-// ── Live query ───────────────────────────────────────────────────────────────
-
 export const queryDataset = async (req, res) => {
     const { query } = req.body;
     if (!query?.trim()) return res.status(400).json({ message: 'Query is required' });
@@ -276,7 +254,6 @@ export const queryDataset = async (req, res) => {
                 let queryObj = {};
                 let limit = 500;
 
-                // Enhanced parsing for find({...}) and aggregate([...])
                 const findMatch = query.match(/find\s*\(([\s\S]*?)\)/);
                 const aggregateMatch = query.match(/aggregate\s*\(([\s\S]*?)\)/);
 
@@ -284,17 +261,13 @@ export const queryDataset = async (req, res) => {
                     try {
                         const pipeline = JSON.parse(aggregateMatch[1].trim());
                         return col.aggregate(pipeline).toArray();
-                    } catch (e) {
-                        console.warn("[MongoDB Aggregate Parse Error]", e.message);
-                    }
+                    } catch { /* fall through to find */ }
                 }
 
                 if (findMatch) {
                     try {
                         queryObj = JSON.parse(findMatch[1].trim() || "{}");
-                    } catch (e) {
-                        console.warn("[MongoDB Find Parse Error]", e.message);
-                    }
+                    } catch { /* use empty filter */ }
                 }
 
                 const limitMatch = query.match(/limit\s*\(\s*(\d+)\s*\)/i);
@@ -306,7 +279,6 @@ export const queryDataset = async (req, res) => {
             return res.status(400).json({ message: `Unsupported live dataset type: ${sourceType}` });
         }
 
-        // Apply row policies to live query results
         const role = req.user?.role || 'VIEWER';
         if (rows && dataset.rowPolicies?.length) {
             rows = applyRowPolicies(rows, dataset.rowPolicies, role);
@@ -314,8 +286,6 @@ export const queryDataset = async (req, res) => {
         res.json({ data: rows });
     } catch (e) { res.status(400).json({ message: 'Query failed: ' + e.message }); }
 };
-
-// ── Save SQL view ────────────────────────────────────────────────────────────
 
 export const saveSqlView = async (req, res) => {
     if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can save SQL views.' });
@@ -354,12 +324,6 @@ export const saveSqlView = async (req, res) => {
     } catch (e) { res.status(500).json({ message: 'Failed to save SQL view: ' + e.message }); }
 };
 
-// ── Row-Based Access Control ──────────────────────────────────────────────────
-
-/**
- * PATCH /api/datasets/:id/row-policies
- * Replace the full rowPolicies array for a dataset. ADMIN only.
- */
 export const updateRowPolicies = async (req, res) => {
     if (req.user?.role !== 'ADMIN') {
         return res.status(403).json({ message: 'Only admins can manage row policies.' });

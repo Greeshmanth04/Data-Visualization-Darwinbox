@@ -1,18 +1,12 @@
 import { User, Dataset, Dashboard, UserRole, CrossDBRelationship, SchemaAuditEntry, DatabaseConnection } from '../types';
 
 const API_URL = '/api';
-
-// --- Token Management ---
 const TOKEN_KEY = 'darwin_token';
 
 export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY);
 export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
 export const removeToken = () => localStorage.removeItem(TOKEN_KEY);
 
-/**
- * Helper to fetch from backend with fallback to mock data implementation.
- * Automatically attaches JWT Authorization header if a token exists.
- */
 async function request<T>(path: string, options?: RequestInit, mockFn?: () => Promise<T>): Promise<T> {
     // Track whether the error came from an HTTP response (vs a network-level failure)
     let isNetworkError = true;
@@ -73,13 +67,10 @@ async function request<T>(path: string, options?: RequestInit, mockFn?: () => Pr
     }
 }
 
-// --- MOCK IMPLEMENTATIONS (Fallback) ---
-
 const getStoredUsers = () => JSON.parse(localStorage.getItem('darwin_users') || '[]');
 const setStoredUsers = (users: any[]) => localStorage.setItem('darwin_users', JSON.stringify(users));
 
 export const api = {
-    // --- Auth ---
     auth: {
         login: async (email: string, password: string) => {
             const response = await request<any>('/auth/login', {
@@ -96,11 +87,9 @@ export const api = {
                 return { token: 'mock_token', user: safeUser };
             });
 
-            // Store the JWT token
             if (response.token) {
                 setToken(response.token);
             }
-            // Store user in session
             localStorage.setItem('darwin_session', JSON.stringify(response.user));
             return response.user;
         },
@@ -130,7 +119,6 @@ export const api = {
         })
     },
 
-    // --- Users ---
     users: {
         getAll: () => request('/users', {}, async () => {
             const users = getStoredUsers();
@@ -157,7 +145,6 @@ export const api = {
         })
     },
 
-    // --- Datasets ---
     datasets: {
         getAll: () => request('/datasets', {}, async () => {
             const stored = localStorage.getItem('darwin_datasets');
@@ -219,13 +206,11 @@ export const api = {
             body: JSON.stringify(payload)
         }),
 
-        // Query a live dataset by its ID — backend handles decryption
         queryDataset: (datasetId: string, query: string) => request<{ data: any[] }>(`/datasource/dataset/${datasetId}/query`, {
             method: 'POST',
             body: JSON.stringify({ query })
         }),
 
-        // Update row-level access policies (ADMIN only)
         updateRowPolicies: (datasetId: string, rowPolicies: import('../types').RowPolicy[]) =>
             request<{ message: string; rowPolicies: import('../types').RowPolicy[] }>(
                 `/datasets/${datasetId}/row-policies`,
@@ -233,7 +218,6 @@ export const api = {
             )
     },
 
-    // --- Connections ---
     connections: {
         test: (config: any) => request<{ success: boolean; message: string }>('/connections/test', {
             method: 'POST',
@@ -255,7 +239,6 @@ export const api = {
         })
     },
 
-    // --- Schema (Cross-DB Relationships & Audit) ---
     schema: {
         getRelationships: (connectionId?: string) => {
             const query = connectionId ? `?connectionId=${connectionId}` : '';
@@ -303,7 +286,6 @@ export const api = {
         }
     },
 
-    // --- Dashboards ---
     dashboards: {
         getAll: (userId: string) => request(`/dashboards?userId=${userId}`, {}, async () => {
             const stored = localStorage.getItem('darwin_dashboards');
@@ -389,12 +371,7 @@ export const api = {
         })
     },
 
-    // --- Cache-First Data Catalog ---
     cache: {
-        /**
-         * Fetch data from an external source and store in Redis cache.
-         * Returns { cacheKey, rowCount, columns, sourceName, sourceType, ttl }
-         */
         store: (payload: {
             sourceType: 'mongodb' | 'mysql' | 'postgres';
             uri: string;
@@ -408,9 +385,6 @@ export const api = {
             body: JSON.stringify(payload)
         }),
 
-        /**
-         * List all currently cached datasets with metadata.
-         */
         list: () => request<Array<{
             key: string;
             sourceType: string;
@@ -420,9 +394,6 @@ export const api = {
             ttl: number;
         }>>('/cache/list'),
 
-        /**
-         * Get the actual row data for a given cache key.
-         */
         getData: (cacheKey: string) => request<{
             rows: any[];
             columns: Array<{ name: string; type: string; description: string }>;
@@ -430,17 +401,11 @@ export const api = {
             sourceName: string;
         }>(`/cache/data?key=${btoa(cacheKey)}`),
 
-        /**
-         * Evict / clear a cache entry by key.
-         */
         clear: (cacheKey: string) => request<{ message: string; key: string }>(
             `/cache/entry?key=${btoa(cacheKey)}`,
             { method: 'DELETE' }
         ),
 
-        /**
-         * Create a Dashboard from a cached dataset — no MongoDB Dataset needed.
-         */
         createDashboard: (payload: {
             cacheKey: string;
             name: string;

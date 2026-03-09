@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dataset } from '../types';
-import { Book, MessageSquare, Send, User, Bot, HelpCircle } from 'lucide-react';
+import { Book, Send, User, Bot, HelpCircle } from 'lucide-react';
 import { answerKnowledgeBaseQuestion } from '../services/geminiService';
 
 interface KnowledgeBaseProps {

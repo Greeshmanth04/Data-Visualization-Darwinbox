@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Dataset, DatabaseConnection, User, CrossDBRelationship, JoinType, RowPolicy, UserRole } from '../types';
-import { Database, Search, Edit2, Save, X, LayoutTemplate, Share2, Plus, Cable, Key, Trash2, Table as TableIcon, Download, Loader2, RefreshCw, AlertTriangle, Link2, Layers, Eye, ShieldCheck, Filter } from 'lucide-react';
+import { Dataset, DatabaseConnection, User, CrossDBRelationship, JoinType } from '../types';
+import { Database, Edit2, Save, X, LayoutTemplate, Share2, Plus, Cable, Key, Trash2, Table as TableIcon, Download, Loader2, RefreshCw, AlertTriangle, Link2, Layers, Eye } from 'lucide-react';
 import { api } from '../services/api';
 import { ConnectionManagerModal } from './ConnectionManagerModal';
 

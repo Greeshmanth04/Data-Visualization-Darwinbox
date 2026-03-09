@@ -9,11 +9,6 @@ interface EditorProps {
   datasets: Dataset[];
 }
 
-// ---------------------------------------------------------------------------
-// In-memory SQL interpreter (for csv / json / xlsx datasets)
-// Supports: SELECT col list or *, WHERE, ORDER BY, LIMIT, GROUP BY, aggregates
-// ---------------------------------------------------------------------------
-
 type Row = Record<string, any>;
 
 function compareValues(a: any, b: any): number {
@@ -196,10 +191,6 @@ function runInMemorySQL(sql: string, data: Row[]): Row[] {
   return rows;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 const Editor: React.FC<EditorProps> = ({ datasets }) => {
   const { activeDatasetId, setActiveDatasetId } = useDatasetContext();
 
@@ -219,11 +210,9 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [execTime, setExecTime] = useState<number | null>(null);
 
-  // Cross-DB relationships state
   const [crossDBRels, setCrossDBRels] = useState<CrossDBRelationship[]>([]);
   const [liveConnections, setLiveConnections] = useState<DatabaseConnection[]>([]);
 
-  // Load cross-DB relationships and live connections for SQL hints
   useEffect(() => {
     api.schema.getRelationships().then(setCrossDBRels).catch(() => { });
     api.connections.getAll().then(setLiveConnections).catch(() => { });
@@ -231,7 +220,6 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
 
   const DB_COL: Record<string, string> = { mysql: '#10b981', postgres: '#3b82f6', mongodb: '#a855f7' };
 
-  // Save modal state
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saveDesc, setSaveDesc] = useState('');
@@ -276,8 +264,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
         const res = await api.datasets.queryDataset(selectedDataset.id, query);
         setResults(res.data);
       } else {
-        // In-memory SQL for csv / json / xlsx
-        if (!selectedDataset.data || selectedDataset.data.length === 0) {
+          if (!selectedDataset.data || selectedDataset.data.length === 0) {
           throw new Error('Dataset has no data to query.');
         }
         const rows = runInMemorySQL(query, selectedDataset.data);
@@ -291,7 +278,6 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
     }
   }, [selectedDataset, query, isLiveDB, isMongo]);
 
-  // Run on Ctrl+Enter
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -346,8 +332,6 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
       setShowSaveModal(false);
       setSaveName('');
       setSaveDesc('');
-      // In a real scenario, we'd trigger a context refresh here to make the new dataset appear.
-      // E.g., fetchDatasets()
       alert('View saved successfully as a new dataset!');
     } catch (e: any) {
       alert(e.message || 'Failed to save view');

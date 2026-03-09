@@ -29,11 +29,6 @@ const initRedis = async () => {
 // Initialize connection
 initRedis();
 
-/**
- * Get data from cache
- * @param {string} key
- * @returns {Promise<any|null>}
- */
 export const getCache = async (key) => {
     if (!isConnected || !client) return null;
     try {
@@ -45,12 +40,6 @@ export const getCache = async (key) => {
     }
 };
 
-/**
- * Set data to cache
- * @param {string} key
- * @param {any} data
- * @param {number} ttl - Time to live in seconds
- */
 export const setCache = async (key, data, ttl = 600) => {
     if (!isConnected || !client) return;
     try {
@@ -60,10 +49,6 @@ export const setCache = async (key, data, ttl = 600) => {
     }
 };
 
-/**
- * Delete data from cache
- * @param {string} key
- */
 export const deleteCache = async (key) => {
     if (!isConnected || !client) return;
     try {
@@ -73,10 +58,6 @@ export const deleteCache = async (key) => {
     }
 };
 
-/**
- * Clear cache by pattern
- * @param {string} pattern
- */
 export const clearPattern = async (pattern) => {
     if (!isConnected || !client) return;
     try {
@@ -89,14 +70,6 @@ export const clearPattern = async (pattern) => {
     }
 };
 
-// ─── Data-level cache helpers (for cache-first Data Catalog) ────────────────
-
-/**
- * Store raw data rows in the cache under a data:<sourceType>:<uniqueKey> key.
- * @param {string} key  - full cache key e.g. "data:mongodb:abc123"
- * @param {object} payload - { rows, columns, sourceType, sourceName }
- * @param {number} ttl  - seconds (default 3600)
- */
 export const setDataCache = async (key, payload, ttl = 3600) => {
     if (!isConnected || !client) return;
     try {
@@ -106,11 +79,6 @@ export const setDataCache = async (key, payload, ttl = 3600) => {
     }
 };
 
-/**
- * Retrieve raw data payload from cache.
- * @param {string} key
- * @returns {Promise<{rows:any[], columns:any[], sourceType:string, sourceName:string}|null>}
- */
 export const getDataCache = async (key) => {
     if (!isConnected || !client) return null;
     try {
@@ -122,10 +90,6 @@ export const getDataCache = async (key) => {
     }
 };
 
-/**
- * List all data:* cache keys with metadata (rowCount, columns, ttl).
- * @returns {Promise<Array<{key, sourceType, sourceName, rowCount, columns, ttl}>>}
- */
 export const listDataCacheKeys = async () => {
     if (!isConnected || !client) return [];
     try {
@@ -154,10 +118,6 @@ export const listDataCacheKeys = async () => {
     }
 };
 
-/**
- * Delete a single data cache entry.
- * @param {string} key
- */
 export const deleteDataCache = async (key) => {
     if (!isConnected || !client) return;
     try {

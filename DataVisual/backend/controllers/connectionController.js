@@ -3,8 +3,6 @@ import { encrypt, decrypt } from '../utils/encryption.js';
 import { withMysql, withPostgres, withMongo, dbNameFromUri, inferType } from '../utils/dbHelpers.js';
 import { logSchemaAction } from './schemaController.js';
 
-// ── Schema fetchers ──────────────────────────────────────────────────────────
-
 const fetchMysqlSchema = (uri) => withMysql(uri, async (conn) => {
     const dbName = new URL(uri).pathname.replace('/', '');
     const [tableRows] = await conn.query(
@@ -92,16 +90,12 @@ const fetchMongodbSchema = (uri) => withMongo(uri, async (client) => {
     return tables;
 });
 
-/** Map DB type → schema fetcher */
 const schemaFetchers = { mysql: fetchMysqlSchema, postgres: fetchPostgresSchema, mongodb: fetchMongodbSchema };
 
-/** Strip internal Mongoose fields + encrypted URI from a connection object */
 const sanitizeConn = (conn) => {
     const { _id, uri, __v, ...safe } = conn.toObject();
     return safe;
 };
-
-// ── Controllers ──────────────────────────────────────────────────────────────
 
 export const testConnection = async (req, res) => {
     const { type, uri } = req.body;
