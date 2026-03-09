@@ -1,4 +1,5 @@
 import express from 'express';
+import authMiddleware from '../middleware/authMiddleware.js';
 import {
     getRelationships,
     createRelationship,
@@ -6,7 +7,8 @@ import {
     deleteRelationship,
     getAuditLog,
     executeJoin,
-    createMergedDataset
+    createMergedDataset,
+    executeCrossDbQuery
 } from '../controllers/schemaController.js';
 
 const router = express.Router();
@@ -23,5 +25,7 @@ router.post('/relationships/:id/dataset', createMergedDataset);
 
 // Audit log
 router.get('/audit', getAuditLog);
+
+router.post('/cross-db-query', authMiddleware, executeCrossDbQuery);
 
 export default router;

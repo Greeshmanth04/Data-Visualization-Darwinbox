@@ -92,6 +92,8 @@ export interface DashboardWidget {
     series?: string[]; // for multi-line/bar
     color?: string;
     isCacheSource?: boolean;
+    aggregation?: 'sum' | 'count' | 'avg' | 'min' | 'max';
+    interval?: 'daily' | 'weekly' | 'monthly';
   };
   w: number; // width col span (1-12)
   h: number; // height row span

@@ -254,4 +254,85 @@ export const createMergedDataset = async (req, res) => {
     }
 };
 
+// ── Virtual SQL Engine (Cross-DB Joins & Aggregations) ─────────────────────
+import alasql from 'alasql';
+
+/**
+ * Execute a SQL query across multiple database connections.
+ * Example: SELECT ... FROM mysql_conn.orders JOIN pg_conn.customers ON ...
+ */
+export const executeCrossDbQuery = async (req, res) => {
+    const { query, limit = 5000 } = req.body;
+    if (!query) return res.status(400).json({ message: 'query is required' });
+
+    try {
+        // 1. Identify all connections and tables in the query
+        // Expected format: <connectionName>.<tableName>
+        // Use a simple regex to find patterns like "connName.tableName"
+        const tablePattern = /([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_-]+)/g;
+        const matches = [...query.matchAll(tablePattern)];
+
+        const sources = new Map(); // name -> { connection, table }
+        for (const [full, connName, tableName] of matches) {
+            if (!sources.has(full)) {
+                // Find connection by name
+                const conn = await DatabaseConnection.findOne({
+                    name: { $regex: new RegExp(`^${connName}$`, 'i') }
+                });
+                if (conn) {
+                    sources.set(full, { conn, tableName, original: full });
+                }
+            }
+        }
+
+        if (sources.size === 0) {
+            return res.status(400).json({ message: 'No valid cross-database tables found. Use "connectionName.tableName" format.' });
+        }
+
+        // 2. Fetch data from all required sources
+        const fetchPromises = Array.from(sources.values()).map(async (src) => {
+            const rows = await fetchRows(src.conn, src.tableName, limit);
+            return { id: src.original, rows };
+        });
+
+        const allData = await Promise.all(fetchPromises);
+
+        // 3. Prepare alasql environment
+        // We replace "connName.tableName" with a temporary table name in the query for alasql
+        let virtualQuery = query;
+        allData.forEach((data, index) => {
+            const tempTableName = `table_${index}`;
+            // Escape special chars in the original name for regex
+            const escapedName = data.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            virtualQuery = virtualQuery.replace(new RegExp(escapedName, 'g'), tempTableName);
+            alasql(`CREATE TABLE IF NOT EXISTS ${tempTableName};`);
+            alasql(`TRUNCATE TABLE ${tempTableName};`);
+            alasql(`INSERT INTO ${tempTableName} SELECT * FROM ?`, [data.rows]);
+        });
+
+        // 4. Execute the query
+        const result = alasql(virtualQuery);
+
+        // Clean up
+        allData.forEach((_, index) => {
+            alasql(`DROP TABLE IF EXISTS table_${index};`);
+        });
+
+        const columns = result.length > 0
+            ? Object.keys(result[0]).map(k => ({ name: k, type: inferType(result[0][k]) }))
+            : [];
+
+        await logSchemaAction(req.user?.userId || 'unknown', 'EXECUTE_CROSS_DB_QUERY', {
+            query,
+            sourcesCount: sources.size,
+            rowCount: result.length
+        });
+
+        res.json({ data: result, columns });
+
+    } catch (e) {
+        res.status(500).json({ message: 'Cross-DB query execution failed: ' + e.message });
+    }
+};
+
 export { logSchemaAction };
