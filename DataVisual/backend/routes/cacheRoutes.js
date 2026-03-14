@@ -4,12 +4,14 @@ import {
     listCached,
     getCachedData,
     clearCached,
-    createDashboardFromCache
+    createDashboardFromCache,
+    storeRawData
 } from '../controllers/cacheController.js';
 
 const router = express.Router();
 
 router.post('/datasource', cacheDatasource);
+router.post('/raw', storeRawData);
 router.get('/list', listCached);
 router.post('/dashboard', createDashboardFromCache);
 router.get('/data', getCachedData);

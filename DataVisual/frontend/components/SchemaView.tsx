@@ -241,6 +241,26 @@ export const SchemaView: React.FC<SchemaViewProps> = ({ datasets, onUpdateDatase
         }
     };
 
+    const [savingToCache, setSavingToCache] = useState(false);
+    const handleSaveJoinToCache = async () => {
+        if (!joinModal || !mergeName.trim()) return;
+        setSavingToCache(true);
+        try {
+            await api.cache.storeRaw({
+                name: mergeName.trim(),
+                rows: joinModal.data,
+                columns: joinModal.columns,
+                sourceType: 'join'
+            });
+            alert(`⚡ Join result saved to cache as "${mergeName}"! You can now use it in Dashboards under the "Cached" tab.`);
+            setJoinModal(null);
+        } catch (e: any) {
+            alert('Failed to cache: ' + (e.message || 'Unknown error'));
+        } finally {
+            setSavingToCache(false);
+        }
+    };
+
     const selectedDataset = useMemo(() => datasets.find(d => d.id === selectedDatasetId) || null, [datasets, selectedDatasetId]);
     const filteredColumns = useMemo(() => {
         if (!selectedDataset) return [];
@@ -689,6 +709,13 @@ export const SchemaView: React.FC<SchemaViewProps> = ({ datasets, onUpdateDatase
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
                             <button onClick={() => setJoinModal(null)} className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors">Close</button>
+
+                            <button onClick={handleSaveJoinToCache} disabled={savingToCache || !mergeName.trim() || joinModal.data.length === 0}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50">
+                                {savingToCache ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                                {savingToCache ? 'Caching…' : 'Save to Cache'}
+                            </button>
+
                             <button onClick={handleSaveMergedDataset} disabled={savingMerge || !mergeName.trim() || joinModal.data.length === 0}
                                 className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors disabled:opacity-50">
                                 {savingMerge ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}

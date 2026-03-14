@@ -414,6 +414,16 @@ export const api = {
         }) => request<any>('/cache/dashboard', {
             method: 'POST',
             body: JSON.stringify(payload)
+        }),
+        storeRaw: (payload: {
+            name: string;
+            rows: any[];
+            columns: any[];
+            sourceType?: string;
+            ttl?: number;
+        }) => request<any>('/cache/raw', {
+            method: 'POST',
+            body: JSON.stringify(payload)
         })
     }
 };

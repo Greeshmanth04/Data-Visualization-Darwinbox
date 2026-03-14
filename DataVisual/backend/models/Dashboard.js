@@ -9,7 +9,9 @@ const DashboardWidgetSchema = new mongoose.Schema({
         xAxis: String,
         dataKey: String,
         series: [String],
-        color: String
+        color: String,
+        isCacheSource: Boolean,
+        aggregation: String
     },
     w: Number,
     h: Number

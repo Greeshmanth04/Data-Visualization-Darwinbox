@@ -135,11 +135,37 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?:
     // For metrics, we still use the data directly and aggregate in totalValue
     if (widget.type === 'metric') return data;
 
-    // For Bar, Line, and Pie charts - return raw data points
-    return data.map(row => ({
-      [widget.config.xAxis!]: row[widget.config.xAxis!],
-      [widget.config.dataKey!]: Number(row[widget.config.dataKey!]) || 0
-    }));
+    // For Bar, Line, and Pie charts - aggregate the data points by xAxis
+    const aggType = widget.config.aggregation || 'sum';
+    const grouped = new Map<string, number[]>();
+
+    data.forEach(row => {
+      const key = String(row[widget.config.xAxis!]);
+      const rawVal = Number(row[widget.config.dataKey!]);
+      const val = isNaN(rawVal) ? 0 : rawVal;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key)!.push(val);
+    });
+
+    const result: any[] = [];
+    grouped.forEach((values, key) => {
+      let aggregatedValue = 0;
+      if (values.length > 0) {
+        if (aggType === 'sum') aggregatedValue = values.reduce((s, v) => s + v, 0);
+        else if (aggType === 'count') aggregatedValue = values.length;
+        else if (aggType === 'avg') aggregatedValue = values.reduce((s, v) => s + v, 0) / values.length;
+        else if (aggType === 'min') aggregatedValue = Math.min(...values);
+        else if (aggType === 'max') aggregatedValue = Math.max(...values);
+      }
+      
+      result.push({
+        [widget.config.xAxis!]: key,
+        [widget.config.dataKey!]: aggregatedValue
+      });
+    });
+
+    // Sort by value descending for better visualization, limit to top 50
+    return result.sort((a, b) => b[widget.config.dataKey!] - a[widget.config.dataKey!]).slice(0, 50);
   }, [widget, data]);
 
   const totalValue = useMemo(() => {
@@ -147,13 +173,16 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?:
     if (!widget.config.dataKey) return data.length;
 
     const agg = widget.config.aggregation || 'sum';
-    const values = data.map(r => Number(r[widget.config.dataKey!]) || 0);
+    const values = data.map(r => {
+      const val = Number(r[widget.config.dataKey!]);
+      return isNaN(val) ? 0 : val;
+    });
 
     if (agg === 'sum') return values.reduce((s, v) => s + v, 0);
     if (agg === 'count') return data.length;
-    if (agg === 'avg') return values.length ? values.reduce((s, v) => s + v, 0) / values.length : 0;
-    if (agg === 'min') return values.length ? Math.min(...values) : 0;
-    if (agg === 'max') return values.length ? Math.max(...values) : 0;
+    if (agg === 'avg') return values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
+    if (agg === 'min') return values.length > 0 ? Math.min(...values) : 0;
+    if (agg === 'max') return values.length > 0 ? Math.max(...values) : 0;
     return 0;
   }, [widget, data]);
 
@@ -259,7 +288,41 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?:
     );
   }
 
-  return <div className="text-gray-500">Widget type not supported</div>;
+  if (widget.type === 'table') {
+    const tableColumns = widget.config.columns || (dataset?.columns?.map((c: any) => c.name) || []);
+    const tableData = data.slice(0, 50); // limit preview
+    return (
+      <div className="w-full h-full overflow-auto bg-slate-900 rounded border border-slate-700">
+        <table className="w-full text-left text-sm text-slate-300">
+          <thead className="bg-slate-800 text-slate-400 sticky top-0">
+            <tr>
+              {tableColumns.map((col: string) => (
+                <th key={col} className="px-4 py-2 font-medium whitespace-nowrap">{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800">
+            {tableData.map((row, i) => (
+              <tr key={i} className="hover:bg-slate-800/50">
+                {tableColumns.map((col: string) => (
+                  <td key={col} className="px-4 py-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                    {String(row[col] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {data.length === 0 && (
+              <tr>
+                <td colSpan={tableColumns.length} className="px-4 py-8 text-center text-slate-500 italic">No data available</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return <div className="text-gray-500 flex items-center justify-center h-full">Widget type not supported or missing config</div>;
 };
 
 const CreateDashboardModal: React.FC<{ onClose: () => void; onSave: (name: string, desc: string) => void }> = ({ onClose, onSave }) => {
@@ -421,7 +484,7 @@ const WidgetBuilderModal: React.FC<{
         dataKey: ['bar', 'line', 'pie', 'metric'].includes(type) ? dataKey : undefined,
         color,
         isCacheSource,
-        aggregation: type === 'metric' ? aggregation : undefined
+        aggregation: ['bar', 'line', 'pie', 'metric'].includes(type) ? aggregation : undefined
       },
       w: width,
       h: type === 'metric' ? 1 : height
@@ -565,7 +628,7 @@ const WidgetBuilderModal: React.FC<{
                       </select>
                     </div>
 
-                    {type === 'metric' && (
+                    {['bar', 'line', 'pie', 'metric'].includes(type) && (
                       <div>
                         <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Aggregation</label>
                         <select

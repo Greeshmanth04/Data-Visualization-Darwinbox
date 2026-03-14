@@ -71,46 +71,48 @@ export const clearPattern = async (pattern) => {
 };
 
 export const setDataCache = async (key, payload, ttl = 3600) => {
-    if (!isConnected || !client) return;
+    if (!isConnected || !client) {
+        throw new Error('Redis unavailable — caching is restricted to Redis per configuration');
+    }
     try {
         await client.set(key, JSON.stringify(payload), { EX: ttl });
     } catch (err) {
         console.error(`DataCache set error [${key}]:`, err.message);
+        throw err;
     }
 };
 
 export const getDataCache = async (key) => {
-    if (!isConnected || !client) return null;
-    try {
-        const data = await client.get(key);
-        return data ? JSON.parse(data) : null;
-    } catch (err) {
-        console.error(`DataCache get error [${key}]:`, err.message);
-        return null;
-    }
+    return getCache(key);
 };
 
 export const listDataCacheKeys = async () => {
     if (!isConnected || !client) return [];
     try {
         const keys = await client.keys('data:*');
+        console.log(`[Cache] Listing keys for data:*, found ${keys.length} keys`);
         const results = [];
         for (const key of keys) {
-            const [raw, ttl] = await Promise.all([
-                client.get(key),
-                client.ttl(key)
-            ]);
-            if (!raw) continue;
-            const payload = JSON.parse(raw);
-            results.push({
-                key,
-                sourceType: payload.sourceType || 'unknown',
-                sourceName: payload.sourceName || key,
-                rowCount: Array.isArray(payload.rows) ? payload.rows.length : 0,
-                columns: payload.columns || [],
-                ttl
-            });
+            try {
+                const [raw, ttl] = await Promise.all([
+                    client.get(key),
+                    client.ttl(key)
+                ]);
+                if (!raw) continue;
+                const payload = JSON.parse(raw);
+                results.push({
+                    key,
+                    sourceType: payload.sourceType || 'unknown',
+                    sourceName: payload.sourceName || key,
+                    rowCount: Array.isArray(payload.rows) ? payload.rows.length : 0,
+                    columns: payload.columns || [],
+                    ttl
+                });
+            } catch (err) {
+                console.error(`[Cache] Error parsing key ${key}:`, err.message);
+            }
         }
+        console.log(`[Cache] Returning ${results.length} valid cache entries`);
         return results;
     } catch (err) {
         console.error('DataCache list error:', err.message);
@@ -119,10 +121,5 @@ export const listDataCacheKeys = async () => {
 };
 
 export const deleteDataCache = async (key) => {
-    if (!isConnected || !client) return;
-    try {
-        await client.del(key);
-    } catch (err) {
-        console.error(`DataCache delete error [${key}]:`, err.message);
-    }
+    return deleteCache(key);
 };

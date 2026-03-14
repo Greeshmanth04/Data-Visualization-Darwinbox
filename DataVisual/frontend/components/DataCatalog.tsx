@@ -622,115 +622,52 @@ const DataSourceModal: React.FC<{
 };
 
 
-// ─── Create Dashboard from Cache Modal ──────────────────────────────────────
-const CreateDashboardFromCacheModal: React.FC<{
-  cacheEntry: { key: string; sourceType: string; sourceName: string; rowCount: number };
-  userId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}> = ({ cacheEntry, userId, onClose, onSuccess }) => {
-  const [name, setName] = useState(`${cacheEntry.sourceName} Dashboard`);
-  const [description, setDescription] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleCreate = async () => {
-    if (!name.trim()) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      await api.cache.createDashboard({ cacheKey: cacheEntry.key, name, description, userId });
-      onSuccess();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-fade-in">
-        <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <LayoutDashboard className="text-blue-400" size={18} />
-              Create Dashboard from Cache
-            </h2>
-            <p className="text-slate-400 text-xs mt-1">{cacheEntry.sourceName} · {cacheEntry.rowCount.toLocaleString()} rows</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"><X size={18} /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Dashboard Name *</label>
-            <input
-              type="text"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="My Dashboard"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Description (optional)</label>
-            <textarea
-              rows={2}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Auto-generated charts from cached data"
-            />
-          </div>
-          <div className="bg-slate-800/50 rounded-lg p-3 text-xs text-slate-400 space-y-1">
-            <div className="font-medium text-slate-300 mb-1">Auto-generated widgets:</div>
-            <div>· KPI cards for numeric columns</div>
-            <div>· Bar chart grouped by first string column</div>
-            <div>· Pie chart for second string column</div>
-            <div>· Full data table (top 100 rows)</div>
-          </div>
-          {error && <div className="text-red-400 text-sm flex items-center gap-2"><AlertTriangle size={14} />{error}</div>}
-          <button
-            onClick={handleCreate}
-            disabled={isLoading || !name.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <LayoutDashboard size={16} />}
-            Create Dashboard
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─── Cached Datasets Panel ───────────────────────────────────────────────────
 const SOURCE_COLORS: Record<string, string> = {
   mongodb: 'bg-green-500/20 text-green-400 border-green-500/30',
   mysql: 'bg-blue-500/20  text-blue-400  border-blue-500/30',
   postgres: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+  merged: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+  join: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
 };
 
 const CachedDatasetsPanel: React.FC<{
   currentUser: User | null;
+  searchTerm: string;
   onCreateDashboard: () => void;
-}> = ({ currentUser, onCreateDashboard }) => {
+}> = ({ currentUser, searchTerm, onCreateDashboard }) => {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dashEntry, setDashEntry] = useState<any | null>(null);
   const [previewEntry, setPreviewEntry] = useState<any | null>(null);
   const [previewData, setPreviewData] = useState<{ rows: any[]; columns: any[] } | null>(null);
 
+  const [error, setError] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
+    setError(null);
     try {
       const list = await api.cache.list();
       setEntries(list);
-    } catch { setEntries([]); }
+    } catch (e: any) {
+      setError(e.message || 'Failed to load cache entries');
+      setEntries([]);
+    }
     finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
+
+  const filteredEntries = useMemo(() => {
+    if (!searchTerm) return entries;
+    const t = searchTerm.toLowerCase();
+    return entries.filter(e =>
+      e.sourceName.toLowerCase().includes(t) ||
+      e.sourceType.toLowerCase().includes(t) ||
+      e.key.toLowerCase().includes(t)
+    );
+  }, [entries, searchTerm]);
 
   const handleClear = async (key: string) => {
     if (!confirm('Evict this cached dataset?')) return;
@@ -754,15 +691,6 @@ const CachedDatasetsPanel: React.FC<{
 
   return (
     <div className="flex flex-col h-full">
-      {/* Create Dashboard Modal */}
-      {dashEntry && currentUser && (
-        <CreateDashboardFromCacheModal
-          cacheEntry={dashEntry}
-          userId={currentUser.id}
-          onClose={() => setDashEntry(null)}
-          onSuccess={() => { setDashEntry(null); onCreateDashboard(); }}
-        />
-      )}
 
       {/* Preview Modal */}
       {previewEntry && previewData && (
@@ -809,16 +737,28 @@ const CachedDatasetsPanel: React.FC<{
 
       <div className="flex-1 overflow-y-auto divide-y divide-slate-800">
         {loading && (
-          <div className="p-6 text-center text-slate-500 text-sm">Loading cache…</div>
-        )}
-        {!loading && entries.length === 0 && (
-          <div className="p-8 text-center">
-            <Zap size={28} className="mx-auto text-slate-700 mb-2" />
-            <p className="text-slate-500 text-sm">No cached datasets yet.</p>
-            <p className="text-slate-600 text-xs mt-1">Use "Add Data Source → Connect Database" and click <b>Cache & Use</b>.</p>
+          <div className="p-6 text-center text-slate-500 text-sm flex items-center justify-center gap-2">
+            <RefreshCw size={14} className="animate-spin" />
+            Loading cache…
           </div>
         )}
-        {entries.map(entry => (
+        {!loading && error && (
+          <div className="p-6 text-center text-red-400 text-sm bg-red-900/10 border-y border-red-900/20">
+            <AlertTriangle size={20} className="mx-auto mb-2 opacity-50" />
+            <p>{error}</p>
+            <button onClick={load} className="mt-2 text-xs text-red-300 hover:underline">Retry</button>
+          </div>
+        )}
+        {!loading && !error && filteredEntries.length === 0 && (
+          <div className="p-8 text-center">
+            <Zap size={28} className="mx-auto text-slate-700 mb-2" />
+            <p className="text-slate-500 text-sm">{searchTerm ? 'No matches found.' : 'No cached datasets yet.'}</p>
+            {!searchTerm && (
+              <p className="text-slate-600 text-xs mt-1">Use "Add Data Source → Connect Database" and click <b>Cache & Use</b>.</p>
+            )}
+          </div>
+        )}
+        {filteredEntries.map(entry => (
           <div key={entry.key} className="p-4 hover:bg-slate-800/40 transition-colors">
             <div className="flex justify-between items-start mb-2">
               <div className="flex-1 min-w-0 pr-2">
@@ -842,15 +782,9 @@ const CachedDatasetsPanel: React.FC<{
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => handlePreview(entry)}
-                className="flex-1 text-xs py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center justify-center gap-1"
+                className="w-full text-xs py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors flex items-center justify-center gap-1"
               >
                 <Eye size={12} /> Preview
-              </button>
-              <button
-                onClick={() => setDashEntry(entry)}
-                className="flex-1 text-xs py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 border border-blue-500/30 transition-colors flex items-center justify-center gap-1"
-              >
-                <LayoutDashboard size={12} /> Create Dashboard
               </button>
             </div>
           </div>
@@ -1084,6 +1018,7 @@ const DataCatalog: React.FC<DataCatalogProps> = ({ datasets, currentUser, onUpda
           <div className="flex-1 overflow-y-auto">
             <CachedDatasetsPanel
               currentUser={currentUser}
+              searchTerm={searchTerm}
               onCreateDashboard={() => onRefreshDashboards?.()}
             />
           </div>

@@ -4,6 +4,7 @@ import { Play, Sparkles, Database, Copy, ChevronDown, Loader2, Save, X } from 'l
 import { generateQueryFromNaturalLanguage } from '../services/geminiService';
 import { useDatasetContext } from '../context/DatasetContext';
 import { api } from '../services/api';
+import alasql from 'alasql';
 
 interface EditorProps {
   datasets: Dataset[];
@@ -11,184 +12,20 @@ interface EditorProps {
 
 type Row = Record<string, any>;
 
-function compareValues(a: any, b: any): number {
-  if (a == null && b == null) return 0;
-  if (a == null) return -1;
-  if (b == null) return 1;
-  if (typeof a === 'number' && typeof b === 'number') return a - b;
-  return String(a).localeCompare(String(b));
-}
+function runInMemorySQL(sql: string, data: Row[], datasetName: string): Row[] {
+  try {
+    alasql.tables[datasetName] = { data };
+    const res = alasql(sql);
+    delete alasql.tables[datasetName];
 
-function evalCondition(row: Row, condition: string): boolean {
-  // Handle AND / OR (simple left-to-right, no precedence)
-  const orParts = condition.split(/\s+OR\s+/i);
-  if (orParts.length > 1) {
-    return orParts.some(p => evalCondition(row, p.trim()));
-  }
-  const andParts = condition.split(/\s+AND\s+/i);
-  if (andParts.length > 1) {
-    return andParts.every(p => evalCondition(row, p.trim()));
-  }
-
-  // Remove outer parens
-  const trimmed = condition.replace(/^\(|\)$/g, '').trim();
-
-  // LIKE  col LIKE '%pattern%'
-  const likeMatch = trimmed.match(/^(\w+)\s+(?:NOT\s+)?LIKE\s+'([^']*)'/i);
-  if (likeMatch) {
-    const isNot = trimmed.match(/NOT\s+LIKE/i);
-    const col = likeMatch[1];
-    const pattern = likeMatch[2].replace(/%/g, '.*').replace(/_/g, '.');
-    const re = new RegExp(`^${pattern}$`, 'i');
-    const result = re.test(String(row[col] ?? ''));
-    return isNot ? !result : result;
-  }
-
-  // IS NULL / IS NOT NULL
-  const isNullMatch = trimmed.match(/^(\w+)\s+IS\s+(NOT\s+)?NULL$/i);
-  if (isNullMatch) {
-    const val = row[isNullMatch[1]];
-    const isNull = val == null || val === '';
-    return isNullMatch[2] ? !isNull : isNull;
-  }
-
-  // Comparison operators: !=, >=, <=, =, >, <
-  const compMatch = trimmed.match(/^(\w+)\s*(!=|>=|<=|=|>|<)\s*'?([^']*?)'?\s*$/);
-  if (compMatch) {
-    const col = compMatch[1];
-    const op = compMatch[2];
-    const rawVal = compMatch[3];
-    const cellVal = row[col];
-    const numVal = parseFloat(rawVal);
-    const compareNum = !isNaN(numVal) && String(numVal) === rawVal.trim();
-
-    const diff = compareNum
-      ? (Number(cellVal) - numVal)
-      : String(cellVal ?? '').localeCompare(rawVal);
-
-    switch (op) {
-      case '=': return compareNum ? Number(cellVal) === numVal : String(cellVal) === rawVal;
-      case '!=': return compareNum ? Number(cellVal) !== numVal : String(cellVal) !== rawVal;
-      case '>': return diff > 0;
-      case '<': return diff < 0;
-      case '>=': return diff >= 0;
-      case '<=': return diff <= 0;
+    if (!Array.isArray(res)) {
+      throw new Error('Query did not return a tabular result.');
     }
+    return res;
+  } catch (err: any) {
+    delete alasql.tables[datasetName];
+    throw new Error(`SQL Error: ${err.message}`);
   }
-
-  return true; // unknown condition — pass through
-}
-
-function applyAggregate(fn: string, col: string, rows: Row[]): any {
-  const values = rows.map(r => r[col]).filter(v => v != null);
-  switch (fn.toUpperCase()) {
-    case 'COUNT': return rows.length;
-    case 'SUM': return values.reduce((a, b) => a + Number(b), 0);
-    case 'AVG': {
-      const nums = values.map(Number);
-      return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
-    }
-    case 'MIN': return values.reduce((a, b) => compareValues(a, b) <= 0 ? a : b, values[0]);
-    case 'MAX': return values.reduce((a, b) => compareValues(a, b) >= 0 ? a : b, values[0]);
-    default: return null;
-  }
-}
-
-function runInMemorySQL(sql: string, data: Row[]): Row[] {
-  const q = sql.trim().replace(/\s+/g, ' ');
-
-  // Must be SELECT
-  if (!/^SELECT\s/i.test(q)) {
-    throw new Error('Only SELECT queries are supported for in-memory datasets.');
-  }
-
-  // Extract clauses using a regex-based parser
-  const parts = q.match(
-    /SELECT\s+(.*?)\s+FROM\s+\S+(?:\s+WHERE\s+(.*?))?(?:\s+GROUP\s+BY\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?(?:\s+LIMIT\s+(\d+))?$/i
-  );
-
-  if (!parts) {
-    throw new Error('Could not parse query. Supported syntax: SELECT [cols] FROM [table] [WHERE ...] [GROUP BY ...] [ORDER BY ...] [LIMIT n]');
-  }
-
-  const selectClause = parts[1].trim();
-  const whereClause = parts[2]?.trim() || null;
-  const groupByClause = parts[3]?.trim() || null;
-  const orderByClause = parts[4]?.trim() || null;
-  const limitClause = parts[5] ? parseInt(parts[5]) : null;
-
-  // WHERE
-  let rows = whereClause ? data.filter(row => evalCondition(row, whereClause)) : [...data];
-
-  // Parse SELECT columns / aggregates
-  const colDefs = selectClause.split(',').map(s => s.trim());
-  const isAggOnly = colDefs.some(c => /^(COUNT|SUM|AVG|MIN|MAX)\s*\(/i.test(c));
-
-  // GROUP BY + aggregates
-  if (groupByClause || isAggOnly) {
-    const groupCols = groupByClause ? groupByClause.split(',').map(s => s.trim()) : [];
-
-    const groups: Map<string, Row[]> = new Map();
-    for (const row of rows) {
-      const key = groupCols.map(c => row[c] ?? '').join('|||');
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(row);
-    }
-
-    const grouped: Row[] = [];
-    for (const [, groupRows] of groups) {
-      const out: Row = {};
-      for (const gc of groupCols) out[gc] = groupRows[0][gc];
-      for (const col of colDefs) {
-        const aggMatch = col.match(/^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(\*|\w+)\s*\)(?:\s+(?:AS\s+)?(\w+))?/i);
-        if (aggMatch) {
-          const alias = aggMatch[3] || `${aggMatch[1]}(${aggMatch[2]})`;
-          out[alias] = applyAggregate(aggMatch[1], aggMatch[2], groupRows);
-        } else if (!groupCols.includes(col) && col !== '*') {
-          out[col] = groupRows[0][col];
-        }
-      }
-      grouped.push(out);
-    }
-    rows = grouped;
-  } else if (selectClause !== '*') {
-    // Simple column projection
-    rows = rows.map(row => {
-      const out: Row = {};
-      for (const col of colDefs) {
-        const aliasMatch = col.match(/^(\w+)\s+(?:AS\s+)?(\w+)$/i);
-        if (aliasMatch) {
-          out[aliasMatch[2]] = row[aliasMatch[1]];
-        } else {
-          out[col] = row[col];
-        }
-      }
-      return out;
-    });
-  }
-
-  // ORDER BY
-  if (orderByClause) {
-    const orderParts = orderByClause.split(',').map(s => {
-      const m = s.trim().match(/^(\w+)(?:\s+(ASC|DESC))?$/i);
-      return m ? { col: m[1], dir: (m[2] || 'ASC').toUpperCase() } : null;
-    }).filter(Boolean) as { col: string; dir: string }[];
-
-    rows.sort((a, b) => {
-      for (const { col, dir } of orderParts) {
-        const cmp = compareValues(a[col], b[col]);
-        if (cmp !== 0) return dir === 'DESC' ? -cmp : cmp;
-      }
-      return 0;
-    });
-  }
-
-  // LIMIT
-  if (limitClause !== null) {
-    rows = rows.slice(0, limitClause);
-  }
-
-  return rows;
 }
 
 const Editor: React.FC<EditorProps> = ({ datasets }) => {
@@ -210,11 +47,9 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [execTime, setExecTime] = useState<number | null>(null);
 
-  const [crossDBRels, setCrossDBRels] = useState<CrossDBRelationship[]>([]);
   const [liveConnections, setLiveConnections] = useState<DatabaseConnection[]>([]);
 
   useEffect(() => {
-    api.schema.getRelationships().then(setCrossDBRels).catch(() => { });
     api.connections.getAll().then(setLiveConnections).catch(() => { });
   }, []);
 
@@ -232,10 +67,11 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
 
   useEffect(() => {
     if (selectedDataset) {
+      const tableName = selectedDataset.sourceMetadata || selectedDataset.name;
       if (isMongo) {
-        setQuery(`db.${selectedDataset.name}.find({}).limit(10)`);
+        setQuery(`db.${tableName}.find({}).limit(10)`);
       } else {
-        setQuery(`SELECT * FROM ${selectedDataset.name} LIMIT 10`);
+        setQuery(`SELECT * FROM \`${tableName}\` LIMIT 10`);
       }
       setResults(null);
       setError(null);
@@ -264,10 +100,10 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
         const res = await api.datasets.queryDataset(selectedDataset.id, query);
         setResults(res.data);
       } else {
-          if (!selectedDataset.data || selectedDataset.data.length === 0) {
+        if (!selectedDataset.data || selectedDataset.data.length === 0) {
           throw new Error('Dataset has no data to query.');
         }
-        const rows = runInMemorySQL(query, selectedDataset.data);
+        const rows = runInMemorySQL(query, selectedDataset.data, selectedDataset.name);
         setResults(rows);
       }
     } catch (e: any) {
@@ -436,7 +272,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
               onChange={e => setQuery(e.target.value)}
               className="w-full h-full bg-[#0f172a] text-blue-100 font-mono p-6 resize-none focus:outline-none text-sm leading-6"
               spellCheck={false}
-              placeholder={isMongo ? 'db.collection.find({})' : 'SELECT * FROM table LIMIT 10'}
+              placeholder={isMongo ? 'db.collection.find({})' : 'SELECT * FROM `table_name` LIMIT 10'}
               onKeyDown={e => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault();
@@ -600,36 +436,6 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
                 </div>
               </div>
             ))}
-            {/* Cross-DB Relationships Section */}
-            {crossDBRels.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-800">
-                <h4 className="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full bg-violet-500" />
-                  Cross-DB Links ({crossDBRels.length})
-                </h4>
-                <div className="space-y-2">
-                  {crossDBRels.map(r => {
-                    const srcConn = liveConnections.find(c => c.id === r.sourceConnectionId);
-                    const tgtConn = liveConnections.find(c => c.id === r.targetConnectionId);
-                    const hint = `SELECT * FROM ${r.sourceTable}\n  JOIN ${r.targetTable}\n  ON ${r.sourceTable}.${r.sourceColumn}\n   = ${r.targetTable}.${r.targetColumn}`;
-                    return (
-                      <div key={r.id}
-                        className="bg-slate-900 border border-violet-500/20 rounded-lg p-2 cursor-pointer hover:border-violet-400/50 transition-colors"
-                        onClick={() => setQuery(hint)}
-                        title="Click to insert JOIN hint">
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="text-[9px] font-bold" style={{ color: DB_COL[srcConn?.type || ''] || '#94a3b8' }}>{r.sourceTable}</span>
-                          <span className="text-slate-600 text-[9px]">↔</span>
-                          <span className="text-[9px] font-bold" style={{ color: DB_COL[tgtConn?.type || ''] || '#94a3b8' }}>{r.targetTable}</span>
-                        </div>
-                        <p className="text-[9px] text-slate-500 font-mono">{r.sourceColumn} = {r.targetColumn}</p>
-                        <p className="text-[9px] text-violet-500/80 mt-1">Click to insert JOIN</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

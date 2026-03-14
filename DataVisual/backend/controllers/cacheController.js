@@ -10,15 +10,6 @@ function makeCacheKey(sourceType, sourceName) {
     return `data:${sourceType}:${hash}`;
 }
 
-const aggregate = (rows, groupCol, valueCol, maxEntries = 20) => {
-    const map = {};
-    rows.forEach(r => {
-        const cat = String(r[groupCol] ?? 'Unknown');
-        map[cat] = (map[cat] || 0) + (Number(r[valueCol]) || 0);
-    });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, maxEntries)
-        .map(([name, value]) => ({ name, value }));
-};
 
 export const cacheDatasource = async (req, res) => {
     const { sourceType, uri, table, collection, database, limit = 1000, ttl = 3600 } = req.body;
@@ -97,11 +88,10 @@ export const createDashboardFromCache = async (req, res) => {
 
         // KPI cards (up to 4 numeric columns)
         numCols.slice(0, 4).forEach((col, i) => {
-            const total = rows.reduce((sum, r) => sum + (Number(r[col.name]) || 0), 0);
             widgets.push({
-                id: `w_kpi_${i}`, type: 'kpi', title: col.description || col.name, datasetId: cacheKey,
-                config: { field: col.name, value: total, aggregation: 'sum', prefix: '', suffix: '' },
-                layout: { x: i * 3, y: 0, w: 3, h: 2 }
+                id: `w_kpi_${i}`, type: 'metric', title: col.description || col.name, datasetId: cacheKey,
+                config: { dataKey: col.name, aggregation: 'sum', isCacheSource: true },
+                w: 3, h: 1
             });
         });
 
@@ -109,8 +99,8 @@ export const createDashboardFromCache = async (req, res) => {
         if (strCols.length > 0 && numCols.length > 0) {
             widgets.push({
                 id: 'w_bar_0', type: 'bar', title: `${numCols[0].name} by ${strCols[0].name}`, datasetId: cacheKey,
-                config: { xField: strCols[0].name, yField: numCols[0].name, data: aggregate(rows, strCols[0].name, numCols[0].name), color: '#3b82f6' },
-                layout: { x: 0, y: 2, w: 6, h: 4 }
+                config: { xAxis: strCols[0].name, dataKey: numCols[0].name, color: '#3b82f6', aggregation: 'sum', isCacheSource: true },
+                w: 6, h: 2
             });
         }
 
@@ -118,16 +108,16 @@ export const createDashboardFromCache = async (req, res) => {
         if (strCols.length > 1 && numCols.length > 0) {
             widgets.push({
                 id: 'w_pie_0', type: 'pie', title: `${numCols[0].name} Distribution by ${strCols[1].name}`, datasetId: cacheKey,
-                config: { field: strCols[1].name, valueField: numCols[0].name, data: aggregate(rows, strCols[1].name, numCols[0].name, 8) },
-                layout: { x: 6, y: 2, w: 6, h: 4 }
+                config: { xAxis: strCols[1].name, dataKey: numCols[0].name, aggregation: 'sum', isCacheSource: true },
+                w: 6, h: 2
             });
         }
 
         // Data table
         widgets.push({
             id: 'w_table_0', type: 'table', title: `${sourceName} — Data Preview`, datasetId: cacheKey,
-            config: { columns: columns.map(c => c.name), data: rows.slice(0, 100) },
-            layout: { x: 0, y: 6, w: 12, h: 5 }
+            config: { columns: columns.map(c => c.name), isCacheSource: true },
+            w: 12, h: 3
         });
 
         const newDashboard = await Dashboard.create({
@@ -139,5 +129,26 @@ export const createDashboardFromCache = async (req, res) => {
         res.status(201).json({ dashboard: newDashboard, widgetCount: widgets.length, rowsUsed: rows.length, message: `Dashboard "${name}" created with ${widgets.length} widgets from cached data` });
     } catch (e) {
         res.status(500).json({ message: 'Failed to create dashboard from cache: ' + e.message });
+    }
+};
+
+export const storeRawData = async (req, res) => {
+    const { name, rows, columns, sourceType = 'merged', ttl = 3600 } = req.body;
+    if (!name || !rows || !columns) {
+        return res.status(400).json({ message: 'name, rows, and columns are required' });
+    }
+
+    try {
+        const cacheKey = makeCacheKey(sourceType, name);
+        await setDataCache(cacheKey, { rows, columns, sourceType, sourceName: name }, parseInt(ttl));
+
+        res.status(201).json({
+            cacheKey,
+            sourceName: name,
+            rowCount: rows.length,
+            message: `Data saved to cache as "${name}"`
+        });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to store raw data: ' + e.message });
     }
 };
