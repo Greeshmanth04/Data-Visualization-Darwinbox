@@ -130,52 +130,16 @@ const WidgetRenderer: React.FC<{ widget: DashboardWidget; data: any[]; dataset?:
     return col?.displayName || widget.config.dataKey;
   }, [dataset, widget.config.dataKey]);
   const chartData = useMemo(() => {
-    if (widget.type === 'metric') return data;
     if (!widget.config.xAxis || !widget.config.dataKey) return data;
 
-    const agg = widget.config.aggregation || 'sum';
-    const interval = widget.config.interval;
-    const grouped: Record<string, any> = {};
+    // For metrics, we still use the data directly and aggregate in totalValue
+    if (widget.type === 'metric') return data;
 
-    data.forEach(row => {
-      let key = row[widget.config.xAxis!];
-      if (interval && key) {
-        try {
-          const d = new Date(key);
-          if (!isNaN(d.getTime())) {
-            if (interval === 'daily') key = d.toISOString().split('T')[0];
-            else if (interval === 'weekly') {
-              const weekStart = new Date(d);
-              weekStart.setDate(d.getDate() - d.getDay());
-              key = `Week of ${weekStart.toISOString().split('T')[0]}`;
-            } else if (interval === 'monthly') {
-              key = d.toLocaleString('default', { month: 'long', year: 'numeric' });
-            }
-          }
-        } catch (e) { }
-      }
-      const val = Number(row[widget.config.dataKey!]) || 0;
-
-      if (!grouped[key]) {
-        grouped[key] = { [widget.config.xAxis!]: key, _sum: 0, _count: 0, _min: val, _max: val };
-      }
-
-      grouped[key]._sum += val;
-      grouped[key]._count += 1;
-      grouped[key]._min = Math.min(grouped[key]._min, val);
-      grouped[key]._max = Math.max(grouped[key]._max, val);
-    });
-
-    return Object.values(grouped).map(g => {
-      let finalVal = 0;
-      if (agg === 'sum') finalVal = g._sum;
-      else if (agg === 'count') finalVal = g._count;
-      else if (agg === 'avg') finalVal = g._sum / (g._count || 1);
-      else if (agg === 'min') finalVal = g._min;
-      else if (agg === 'max') finalVal = g._max;
-
-      return { [widget.config.xAxis!]: g[widget.config.xAxis!], [widget.config.dataKey!]: finalVal };
-    });
+    // For Bar, Line, and Pie charts - return raw data points
+    return data.map(row => ({
+      [widget.config.xAxis!]: row[widget.config.xAxis!],
+      [widget.config.dataKey!]: Number(row[widget.config.dataKey!]) || 0
+    }));
   }, [widget, data]);
 
   const totalValue = useMemo(() => {
@@ -431,7 +395,6 @@ const WidgetBuilderModal: React.FC<{
   const [height, setHeight] = useState(initialWidget?.h || 2);
   const [color, setColor] = useState(initialWidget?.config.color || '#3b82f6');
   const [aggregation, setAggregation] = useState<'sum' | 'count' | 'avg' | 'min' | 'max'>(initialWidget?.config.aggregation || 'sum');
-  const [aggInterval, setAggInterval] = useState<'daily' | 'weekly' | 'monthly' | undefined>(initialWidget?.config.interval);
 
   const selectedDataset = datasets.find(d => d.id === datasetId);
   const restrictedCols = getRestrictedColumns(selectedDataset);
@@ -458,8 +421,7 @@ const WidgetBuilderModal: React.FC<{
         dataKey: ['bar', 'line', 'pie', 'metric'].includes(type) ? dataKey : undefined,
         color,
         isCacheSource,
-        aggregation,
-        interval: aggInterval
+        aggregation: type === 'metric' ? aggregation : undefined
       },
       w: width,
       h: type === 'metric' ? 1 : height
@@ -603,34 +565,22 @@ const WidgetBuilderModal: React.FC<{
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Aggregation</label>
-                      <select
-                        value={aggregation}
-                        onChange={e => setAggregation(e.target.value as any)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="sum">Sum</option>
-                        <option value="count">Count</option>
-                        <option value="avg">Average</option>
-                        <option value="min">Minimum</option>
-                        <option value="max">Maximum</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Time Interval (Optional)</label>
-                      <select
-                        value={aggInterval || ''}
-                        onChange={e => setAggInterval(e.target.value as any || undefined)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      >
-                        <option value="">None</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                    </div>
+                    {type === 'metric' && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 uppercase mb-2">Aggregation</label>
+                        <select
+                          value={aggregation}
+                          onChange={e => setAggregation(e.target.value as any)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="sum">Sum</option>
+                          <option value="count">Count</option>
+                          <option value="avg">Average</option>
+                          <option value="min">Minimum</option>
+                          <option value="max">Maximum</option>
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
               </>
@@ -692,7 +642,7 @@ const WidgetBuilderModal: React.FC<{
                   <h3 className="font-semibold text-slate-200 mb-4">{title}</h3>
                   <div className="flex-1 min-h-0">
                     <WidgetRenderer
-                      widget={{ id: 'preview', title, type, datasetId: sourceTab === 'cache' ? selectedCacheKey : datasetId, config: { xAxis, dataKey, color, aggregation, interval: aggInterval }, w: width, h: height }}
+                      widget={{ id: 'preview', title, type, datasetId: sourceTab === 'cache' ? selectedCacheKey : datasetId, config: { xAxis, dataKey, color, aggregation }, w: width, h: height }}
                       data={previewData}
                       dataset={sourceTab === 'cache' ? { columns: cacheColumns } : selectedDataset}
                     />

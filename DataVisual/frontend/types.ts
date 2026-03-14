@@ -93,7 +93,6 @@ export interface DashboardWidget {
     color?: string;
     isCacheSource?: boolean;
     aggregation?: 'sum' | 'count' | 'avg' | 'min' | 'max';
-    interval?: 'daily' | 'weekly' | 'monthly';
   };
   w: number; // width col span (1-12)
   h: number; // height row span
