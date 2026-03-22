@@ -1,14 +1,7 @@
-/**
- * Evaluate a single row against one RowPolicy.
- * @param {object} row  - one data row
- * @param {object} policy - { column, operator, value }
- * @returns {boolean}
- */
 const evalPolicy = (row, policy) => {
     const { column, operator, value: policyValue } = policy;
     const cellValue = row[column];
 
-    // Helper to normalize values for comparison
     const normalize = (val) => {
         if (val === null || val === undefined) {
             return '';
@@ -16,11 +9,9 @@ const evalPolicy = (row, policy) => {
         if (typeof val === 'boolean') {
             return val;
         }
-        // If policy value is numeric, try to treat cell as number
         if (typeof policyValue === 'number' && !isNaN(Number(val))) {
             return Number(val);
         }
-        // If policy value is boolean-ish and cell is boolean-ish
         if (typeof policyValue === 'boolean') {
             if (typeof val === 'string') {
                 if (val.toLowerCase() === 'true') {
@@ -57,14 +48,7 @@ const evalPolicy = (row, policy) => {
     }
 };
 
-/**
- * @param {any[]}    rows        - array of data rows
- * @param {object[]} rowPolicies - Dataset.rowPolicies array from MongoDB
- * @param {string}   role        - caller's role ('ADMIN' | 'ANALYST' | 'VIEWER')
- * @returns {any[]} filtered rows
- */
 export const applyRowPolicies = (rows, rowPolicies, role) => {
-    // ADMINs always see everything
     if (role === 'ADMIN') {
         return rows;
     }
@@ -73,15 +57,12 @@ export const applyRowPolicies = (rows, rowPolicies, role) => {
         return rows;
     }
 
-    // Gather policies for this role
     const policies = (rowPolicies || []).filter(p => p.role === role);
     if (policies.length === 0) {
-        return rows; // permissive default
+        return rows; 
     }
 
     return rows.filter(row => {
-        // Walk through policies, applying AND/OR logic cumulatively
-        // The 'combine' of the FIRST policy is irrelevant (it opens the chain)
         let result = evalPolicy(row, policies[0]);
 
         for (let i = 1; i < policies.length; i++) {
@@ -90,7 +71,7 @@ export const applyRowPolicies = (rows, rowPolicies, role) => {
             if (p.combine === 'OR') {
                 result = result || matched;
             } else {
-                result = result && matched; // AND (default)
+                result = result && matched; 
             }
         }
 

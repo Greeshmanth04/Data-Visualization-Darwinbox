@@ -2,10 +2,6 @@ import jwt from 'jsonwebtoken';
 
 const authMiddleware = (req, res, next) => {
     const secret = process.env.JWT_SECRET;
-    if (!secret) {
-        return res.status(500).json({ message: 'Server misconfiguration: JWT_SECRET not set.' });
-    }
-
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

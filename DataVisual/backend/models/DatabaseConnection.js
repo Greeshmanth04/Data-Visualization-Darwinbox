@@ -20,10 +20,10 @@ const TableSchema = new mongoose.Schema({
 
 const DatabaseConnectionSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
-    name: { type: String, required: true }, // User friendly name
+    name: { type: String, required: true },
     type: { type: String, enum: ['mysql', 'postgres', 'mongodb'], required: true },
-    uri: { type: String, required: true }, // Encrypted single connection string
-    tables: [TableSchema] // Parsed schema structure
+    uri: { type: String, required: true },
+    tables: [TableSchema]
 }, { timestamps: true });
 
 export const DatabaseConnection = mongoose.model('DatabaseConnection', DatabaseConnectionSchema);
