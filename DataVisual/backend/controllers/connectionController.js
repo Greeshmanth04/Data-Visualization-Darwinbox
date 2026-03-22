@@ -1,7 +1,6 @@
 import { DatabaseConnection } from '../models/index.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 import { withMysql, withPostgres, withMongo, dbNameFromUri, inferType } from '../utils/dbHelpers.js';
-import { logSchemaAction } from './schemaController.js';
 
 const fetchMysqlSchema = (uri) => withMysql(uri, async (conn) => {
     const dbName = new URL(uri).pathname.replace('/', '');
@@ -67,8 +66,16 @@ const fetchPostgresSchema = (uri) => withPostgres(uri, async (client) => {
         const pkCols = new Set(pkRes.rows.map(r => r.column_name));
         return {
             name: table_name,
-            columns: colRes.rows.map(c => ({ name: c.column_name, type: c.data_type, isPrimaryKey: pkCols.has(c.column_name) })),
-            foreignKeys: fkRes.rows.map(fk => ({ column: fk.column_name, referenceTable: fk.foreign_table_name, referenceColumn: fk.foreign_column_name }))
+            columns: colRes.rows.map(c => ({
+                name: c.column_name,
+                type: c.data_type,
+                isPrimaryKey: pkCols.has(c.column_name)
+            })),
+            foreignKeys: fkRes.rows.map(fk => ({
+                column: fk.column_name,
+                referenceTable: fk.foreign_table_name,
+                referenceColumn: fk.foreign_column_name
+            }))
         };
     }));
     return tables;
@@ -83,14 +90,22 @@ const fetchMongodbSchema = (uri) => withMongo(uri, async (client) => {
         docs.forEach(d => Object.keys(d).forEach(k => fields.add(k)));
         return {
             name,
-            columns: [...fields].map(k => ({ name: k, type: k === '_id' ? 'ObjectId' : 'Mixed', isPrimaryKey: k === '_id' })),
+            columns: [...fields].map(k => ({
+                name: k,
+                type: k === '_id' ? 'ObjectId' : 'Mixed',
+                isPrimaryKey: k === '_id'
+            })),
             foreignKeys: []
         };
     }));
     return tables;
 });
 
-const schemaFetchers = { mysql: fetchMysqlSchema, postgres: fetchPostgresSchema, mongodb: fetchMongodbSchema };
+const schemaFetchers = {
+    mysql: fetchMysqlSchema,
+    postgres: fetchPostgresSchema,
+    mongodb: fetchMongodbSchema
+};
 
 const sanitizeConn = (conn) => {
     const { _id, uri, __v, ...safe } = conn.toObject();
@@ -99,12 +114,19 @@ const sanitizeConn = (conn) => {
 
 export const testConnection = async (req, res) => {
     const { type, uri } = req.body;
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can test connections.' });
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Only admins can test connections.' });
+    }
     try {
-        if (type === 'mysql') await withMysql(uri, c => c.query('SELECT 1'));
-        else if (type === 'postgres') await withPostgres(uri, c => c.query('SELECT 1'));
-        else if (type === 'mongodb') await withMongo(uri, c => c.db(dbNameFromUri(uri)).command({ ping: 1 }));
-        else return res.status(400).json({ message: 'Unsupported database type' });
+        if (type === 'mysql') {
+            await withMysql(uri, (c) => c.query('SELECT 1'));
+        } else if (type === 'postgres') {
+            await withPostgres(uri, (c) => c.query('SELECT 1'));
+        } else if (type === 'mongodb') {
+            await withMongo(uri, (c) => c.db(dbNameFromUri(uri)).command({ ping: 1 }));
+        } else {
+            return res.status(400).json({ message: 'Unsupported database type' });
+        }
         res.json({ success: true, message: 'Connection successful' });
     } catch (e) {
         res.status(400).json({ message: `Connection failed: ${e.message}` });
@@ -113,11 +135,17 @@ export const testConnection = async (req, res) => {
 
 export const createConnection = async (req, res) => {
     const { name, type, uri } = req.body;
-    if (!name || !type || !uri) return res.status(400).json({ message: 'Missing required fields' });
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can add connections.' });
+    if (!name || !type || !uri) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Only admins can add connections.' });
+    }
 
     const fetcher = schemaFetchers[type];
-    if (!fetcher) return res.status(400).json({ message: 'Unsupported database type' });
+    if (!fetcher) {
+        return res.status(400).json({ message: 'Unsupported database type' });
+    }
 
     try {
         const tables = await fetcher(uri);
@@ -142,10 +170,14 @@ export const getConnections = async (_req, res) => {
 };
 
 export const deleteConnection = async (req, res) => {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can delete connections.' });
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Only admins can delete connections.' });
+    }
     try {
         const result = await DatabaseConnection.findOneAndDelete({ id: req.params.id });
-        if (!result) return res.status(404).json({ message: 'Connection not found' });
+        if (!result) {
+            return res.status(404).json({ message: 'Connection not found' });
+        }
         res.json({ message: 'Connection deleted' });
     } catch (e) {
         res.status(500).json({ message: 'Failed to delete connection: ' + e.message });
@@ -156,22 +188,33 @@ export const queryConnection = async (req, res) => {
     const { table, collection, limit = 50 } = req.body;
     try {
         const conn = await DatabaseConnection.findOne({ id: req.params.id });
-        if (!conn) return res.status(404).json({ message: 'Connection not found' });
+        if (!conn) {
+            return res.status(404).json({ message: 'Connection not found' });
+        }
 
         const uri = decrypt(conn.uri);
         const lim = parseInt(limit);
-        let data = [], columns = [];
+        let data = [];
+        let columns = [];
 
         if (conn.type === 'mysql') {
-            data = await withMysql(uri, async c => { const [rows] = await c.execute(`SELECT * FROM \`${table}\` LIMIT ${lim}`); return rows; });
+            data = await withMysql(uri, async (c) => {
+                const [rows] = await c.execute(`SELECT * FROM \`${table}\` LIMIT ${lim}`);
+                return rows;
+            });
         } else if (conn.type === 'postgres') {
-            const result = await withPostgres(uri, c => c.query(`SELECT * FROM "${table}" LIMIT ${lim}`));
+            const result = await withPostgres(uri, (c) => c.query(`SELECT * FROM "${table}" LIMIT ${lim}`));
             data = result.rows;
-            if (result.fields) columns = result.fields.map(f => ({ name: f.name, type: f.dataTypeID }));
+            if (result.fields) {
+                columns = result.fields.map(f => ({ name: f.name, type: f.dataTypeID }));
+            }
         } else if (conn.type === 'mongodb') {
-            data = await withMongo(uri, async c => {
+            data = await withMongo(uri, async (c) => {
                 const docs = await c.db(dbNameFromUri(uri)).collection(collection || table).find({}).limit(lim).toArray();
-                return docs.map(d => { const { _id, ...rest } = d; return { _id: _id.toString(), ...rest }; });
+                return docs.map(d => {
+                    const { _id, ...rest } = d;
+                    return { _id: _id.toString(), ...rest };
+                });
             });
         } else {
             return res.status(400).json({ message: 'Unsupported database type' });
@@ -187,21 +230,23 @@ export const queryConnection = async (req, res) => {
 };
 
 export const refreshConnectionSchema = async (req, res) => {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ message: 'Only admins can refresh schema.' });
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Only admins can refresh schema.' });
+    }
     try {
         const conn = await DatabaseConnection.findOne({ id: req.params.id });
-        if (!conn) return res.status(404).json({ message: 'Connection not found' });
+        if (!conn) {
+            return res.status(404).json({ message: 'Connection not found' });
+        }
 
         const fetcher = schemaFetchers[conn.type];
-        if (!fetcher) return res.status(400).json({ message: 'Unsupported database type' });
+        if (!fetcher) {
+            return res.status(400).json({ message: 'Unsupported database type' });
+        }
 
         const uri = decrypt(conn.uri);
         conn.tables = await fetcher(uri);
         await conn.save();
-
-        await logSchemaAction(req.user?.userId || 'unknown', 'REFRESH_SCHEMA', {
-            connectionId: req.params.id, connectionName: conn.name, tableCount: conn.tables.length
-        });
 
         res.json(sanitizeConn(conn));
     } catch (e) {

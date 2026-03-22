@@ -1,4 +1,4 @@
-import { User, Dataset, Dashboard, UserRole, CrossDBRelationship, SchemaAuditEntry, DatabaseConnection } from '../types';
+import { User, Dataset, Dashboard, UserRole, CrossDBRelationship, DatabaseConnection } from '../types';
 
 const API_URL = '/api';
 const TOKEN_KEY = 'darwin_token';
@@ -105,7 +105,6 @@ export const api = {
                 name, email, password,
                 role: UserRole.ANALYST,
                 status: 'pending',
-                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`
             };
             setStoredUsers([...users, newUser]);
             return { message: 'Success' };
@@ -280,10 +279,7 @@ export const api = {
             method: 'POST',
             body: JSON.stringify(payload)
         }),
-        getAuditLog: (limit?: number) => {
-            const query = limit ? `?limit=${limit}` : '';
-            return request<SchemaAuditEntry[]>(`/schema/audit${query}`);
-        }
+
     },
 
     dashboards: {

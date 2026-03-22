@@ -17,7 +17,9 @@ export const updateUser = async (req, res) => {
             { role, status },
             { returnDocument: 'after', projection: '-password' }
         );
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         res.json(user);
     } catch (e) {
         res.status(500).json({ message: e.message });
@@ -27,7 +29,9 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
     try {
         const result = await User.findOneAndDelete({ id: req.params.id });
-        if (!result) return res.status(404).json({ message: 'User not found' });
+        if (!result) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         res.json({ message: 'Deleted' });
     } catch (e) {
         res.status(500).json({ message: e.message });

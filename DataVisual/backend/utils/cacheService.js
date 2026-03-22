@@ -1,15 +1,17 @@
 import { createClient } from 'redis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 let client = null;
 let isConnected = false;
 
 const initRedis = async () => {
     try {
-        client = createClient({ url: REDIS_URL });
+        const url = process.env.REDIS_URL;
+        client = createClient({ url });
 
         client.on('error', (err) => {
-            if (isConnected) console.error('Redis Client Error:', err.message);
+            if (isConnected) {
+                console.error('Redis Client Error:', err.message);
+            }
             isConnected = false;
         });
 
@@ -20,7 +22,7 @@ const initRedis = async () => {
 
         await client.connect();
     } catch (err) {
-        console.warn('Redis unavailable — caching disabled. To enable, start Redis on', REDIS_URL);
+        console.warn('Redis unavailable — caching disabled.');
         isConnected = false;
         client = null;
     }
@@ -30,7 +32,9 @@ const initRedis = async () => {
 initRedis();
 
 export const getCache = async (key) => {
-    if (!isConnected || !client) return null;
+    if (!isConnected || !client) {
+        return null;
+    }
     try {
         const data = await client.get(key);
         return data ? JSON.parse(data) : null;
@@ -41,7 +45,9 @@ export const getCache = async (key) => {
 };
 
 export const setCache = async (key, data, ttl = 600) => {
-    if (!isConnected || !client) return;
+    if (!isConnected || !client) {
+        return;
+    }
     try {
         await client.set(key, JSON.stringify(data), { EX: ttl });
     } catch (err) {
@@ -50,7 +56,9 @@ export const setCache = async (key, data, ttl = 600) => {
 };
 
 export const deleteCache = async (key) => {
-    if (!isConnected || !client) return;
+    if (!isConnected || !client) {
+        return;
+    }
     try {
         await client.del(key);
     } catch (err) {
@@ -59,7 +67,9 @@ export const deleteCache = async (key) => {
 };
 
 export const clearPattern = async (pattern) => {
-    if (!isConnected || !client) return;
+    if (!isConnected || !client) {
+        return;
+    }
     try {
         const keys = await client.keys(pattern);
         if (keys.length > 0) {
@@ -87,10 +97,11 @@ export const getDataCache = async (key) => {
 };
 
 export const listDataCacheKeys = async () => {
-    if (!isConnected || !client) return [];
+    if (!isConnected || !client) {
+        return [];
+    }
     try {
         const keys = await client.keys('data:*');
-        console.log(`[Cache] Listing keys for data:*, found ${keys.length} keys`);
         const results = [];
         for (const key of keys) {
             try {
@@ -98,7 +109,9 @@ export const listDataCacheKeys = async () => {
                     client.get(key),
                     client.ttl(key)
                 ]);
-                if (!raw) continue;
+                if (!raw) {
+                    continue;
+                }
                 const payload = JSON.parse(raw);
                 results.push({
                     key,
@@ -112,7 +125,6 @@ export const listDataCacheKeys = async () => {
                 console.error(`[Cache] Error parsing key ${key}:`, err.message);
             }
         }
-        console.log(`[Cache] Returning ${results.length} valid cache entries`);
         return results;
     } catch (err) {
         console.error('DataCache list error:', err.message);

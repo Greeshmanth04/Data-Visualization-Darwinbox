@@ -4,9 +4,9 @@ import { getToken } from './api';
 
 let _ai: any = null;
 const getAI = () => {
-  if (!_ai && process.env.GEMINI_API_KEY) {
+  if (!_ai && import.meta.env.VITE_GEMINI_API_KEY) {
     try {
-      _ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      _ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
     } catch (e) {
       console.warn("Failed to initialize GoogleGenAI:", e);
     }
@@ -49,7 +49,7 @@ export const generateQueryFromNaturalLanguage = async (
     console.error(`AI ${dialect.toUpperCase()} Gen Error (falling back to frontend):`, error);
 
     // Fallback if backend is not available
-    if (!process.env.GEMINI_API_KEY) {
+    if (!import.meta.env.VITE_GEMINI_API_KEY) {
       return dialect === 'mongodb'
         ? `// Error: AI Service unavailable\ndb.${selectedDataset?.name || 'metrics'}.find({}).limit(10);`
         : `-- Error: AI Service unavailable\nSELECT * FROM ${selectedDataset?.name || 'sales_2024'} LIMIT 10;`;
@@ -88,7 +88,7 @@ export const generateDashboardInsights = async (
   data: any[],
   context: string
 ): Promise<string> => {
-  if (!process.env.GEMINI_API_KEY) return "AI Insights unavailable without API Key.";
+  if (!import.meta.env.VITE_GEMINI_API_KEY) return "AI Insights unavailable without API Key.";
 
   // Limit data sent to avoid token limits
   const sampleData = JSON.stringify(data.slice(0, 20));
@@ -118,7 +118,7 @@ export const generateDashboardInsights = async (
 export const analyzeDataset = async (
   dataset: Dataset
 ): Promise<AIAnalysisResult | null> => {
-  if (!process.env.GEMINI_API_KEY) {
+  if (!import.meta.env.VITE_GEMINI_API_KEY) {
     console.warn("API Key missing for analysis");
     return {
       summary: "Demo Mode: API Key missing. Unable to generate real analysis.",
@@ -213,7 +213,7 @@ export const answerKnowledgeBaseQuestion = async (
   question: string,
   datasets: Dataset[]
 ): Promise<string> => {
-  if (!process.env.GEMINI_API_KEY) return "AI Assistant unavailable without API Key.";
+  if (!import.meta.env.VITE_GEMINI_API_KEY) return "AI Assistant unavailable without API Key.";
 
   const schemaContext = datasets.map(d =>
     `Dataset: ${d.name}\nDescription: ${d.description}\nFields: ${d.columns.map(c => c.name).join(', ')}`

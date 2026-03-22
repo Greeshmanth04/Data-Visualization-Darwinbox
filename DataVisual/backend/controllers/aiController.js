@@ -1,16 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 import { getCache, setCache } from '../utils/cacheService.js';
 
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
+const genAI = process.env.GEMINI_API_KEY
+    ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+    : null;
 
 export const generateQuery = async (req, res) => {
     const { prompt, schemaContext, dialect = 'sql' } = req.body;
     const cacheKey = `ai_query:${dialect}:${Buffer.from(prompt).toString('base64')}`;
     try {
         const cached = await getCache(cacheKey);
-        if (cached) return res.json({ query: cached });
+        if (cached) {
+            return res.json({ query: cached });
+        }
 
-        if (!genAI) return res.status(503).json({ message: 'AI Service not configured' });
+        if (!genAI) {
+            return res.status(503).json({ message: 'AI Service not configured' });
+        }
 
         const dialectInstruction = dialect === 'mongodb'
             ? 'Use MongoDB aggregation pipeline or find query syntax.'

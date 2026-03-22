@@ -138,7 +138,7 @@ const App: React.FC = () => {
               <h2 className="text-2xl font-bold text-slate-300 mb-2">Settings</h2>
               <div className="p-6 bg-slate-800 rounded-lg border border-slate-700 max-w-md mx-auto text-left">
                 <div className="flex items-center gap-4 mb-4 border-b border-slate-700 pb-4">
-                  <img src={user?.avatar} alt={user?.name} className="w-12 h-12 rounded-full bg-slate-700" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">{user?.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}</div>
                   <div>
                     <h3 className="text-white font-medium">{user?.name}</h3>
                     <p className="text-sm text-slate-400 flex items-center gap-2">

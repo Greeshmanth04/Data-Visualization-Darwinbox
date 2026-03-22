@@ -1,11 +1,9 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dashboard, DashboardWidget, Dataset, AIAnalysisResult, User, UserRole } from '../types';
 import { ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, XAxis, YAxis, Tooltip, CartesianGrid, Cell, Legend } from 'recharts';
-import { Maximize2, Sparkles, TrendingUp, AlertTriangle, Link as LinkIcon, Lightbulb, X, Plus, Trash2, Layout, BarChart3, PieChart as PieIcon, Hash, Pencil, Check, GripHorizontal, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Share2, Users, Download, FileText, Image as ImageIcon, Database as DataIcon } from 'lucide-react';
+import { Maximize2, Sparkles, TrendingUp, AlertTriangle, Link as LinkIcon, Lightbulb, X, Plus, Trash2, Layout, BarChart3, PieChart as PieIcon, Hash, Pencil, Check, GripHorizontal, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, Share2, Users, Database as DataIcon } from 'lucide-react';
 import { analyzeDataset } from '../services/geminiService';
 import { api } from '../services/api';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 interface DashboardViewProps {
   dashboards: Dashboard[];
@@ -855,87 +853,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
   const [draggedWidgetIndex, setDraggedWidgetIndex] = useState<number | null>(null);
   const [expandedWidgetId, setExpandedWidgetId] = useState<string | null>(null);
   const [editingWidget, setEditingWidget] = useState<DashboardWidget | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const dashboardRef = useRef<HTMLDivElement>(null);
 
-  const handleExportPDF = async () => {
-    if (!dashboardRef.current) return;
-    setIsExporting(true);
-    try {
-      const canvas = await html2canvas(dashboardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0f172a' // match slate-900
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-      });
-      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-      pdf.save(`${currentDashboard?.name || 'dashboard'}.pdf`);
-    } catch (e) {
-      console.error('PDF Export Error:', e);
-    }
-    setIsExporting(false);
-  };
 
-  const handleExportPNG = async () => {
-    if (!dashboardRef.current) return;
-    setIsExporting(true);
-    try {
-      const canvas = await html2canvas(dashboardRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#0f172a'
-      });
-      const link = document.createElement('a');
-      link.download = `${currentDashboard?.name || 'dashboard'}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch (e) {
-      console.error('PNG Export Error:', e);
-    }
-    setIsExporting(false);
-  };
-
-  const handleExportCSV = async () => {
-    if (!currentDashboard || currentDashboard.widgets.length === 0) return;
-    setIsExporting(true);
-    try {
-      const firstWidget = currentDashboard.widgets[0];
-      const dataset = datasets.find(d => d.id === firstWidget.datasetId);
-      if (!dataset) return;
-
-      const token = localStorage.getItem('darwin_token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const response = await fetch('/api/export/csv', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          data: dataset.data,
-          filename: `${currentDashboard.name}_data`
-        })
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${currentDashboard.name}_data.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-    } catch (e) {
-      console.error('CSV Export Error:', e);
-    }
-    setIsExporting(false);
-  };
 
   const currentDashboard = dashboards.find(d => d.id === activeDashboardId) || dashboards[0];
 
@@ -1248,7 +1167,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Dashboard Content */}
         {currentDashboard ? (
-          <div ref={dashboardRef} className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-900">
+          <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-slate-900">
             {/* Header */}
             <div className="flex justify-between items-end border-b border-slate-800 pb-6">
               <div>
@@ -1273,27 +1192,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({
 
                 {!isEditMode && (
                   <>
-                    <div className="relative group">
-                      <button
-                        className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium transition-colors border border-slate-700"
-                        disabled={isExporting}
-                      >
-                        <Download size={18} className={isExporting ? 'animate-bounce' : ''} />
-                        <span>{isExporting ? 'Exporting...' : 'Export'}</span>
-                        <ChevronDown size={16} />
-                      </button>
-                      <div className="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-30">
-                        <button onClick={handleExportPDF} className="w-full text-left px-4 py-2 hover:bg-slate-700 text-slate-300 flex items-center space-x-2 rounded-t-lg">
-                          <FileText size={16} /> <span>Download PDF</span>
-                        </button>
-                        <button onClick={handleExportPNG} className="w-full text-left px-4 py-2 hover:bg-slate-700 text-slate-300 flex items-center space-x-2">
-                          <ImageIcon size={16} /> <span>Export Image</span>
-                        </button>
-                        <button onClick={handleExportCSV} className="w-full text-left px-4 py-2 hover:bg-slate-700 text-slate-300 flex items-center space-x-2 rounded-b-lg">
-                          <DataIcon size={16} /> <span>Export CSV Data</span>
-                        </button>
-                      </div>
-                    </div>
+
 
                     {currentDashboard.ownerId === currentUser.id && (
                       <button

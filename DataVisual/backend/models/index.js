@@ -3,4 +3,3 @@ export { Dataset } from './Dataset.js';
 export { Dashboard } from './Dashboard.js';
 export { DatabaseConnection } from './DatabaseConnection.js';
 export { CrossDatabaseRelationship } from './CrossDatabaseRelationship.js';
-export { SchemaAuditLog } from './SchemaAuditLog.js';

@@ -6,9 +6,13 @@ export const getDashboards = async (req, res) => {
     const cacheKey = `dashboards:list:${userId || 'all'}`;
     try {
         const cached = await getCache(cacheKey);
-        if (cached) return res.json(cached);
+        if (cached) {
+            return res.json(cached);
+        }
 
-        const query = userId ? { $or: [{ ownerId: userId }, { 'sharedWith.userId': userId }] } : {};
+        const query = userId
+            ? { $or: [{ ownerId: userId }, { 'sharedWith.userId': userId }] }
+            : {};
         const dashboards = await Dashboard.find(query);
         await setCache(cacheKey, dashboards, 300);
         res.json(dashboards);
@@ -19,7 +23,9 @@ export const getDashboards = async (req, res) => {
 
 export const createDashboard = async (req, res) => {
     const { userId, ...dashboardData } = req.body;
-    if (!userId) return res.status(400).json({ message: 'User ID required' });
+    if (!userId) {
+        return res.status(400).json({ message: 'User ID required' });
+    }
     try {
         const newDash = await Dashboard.create({ ...dashboardData, ownerId: userId });
         await clearPattern('dashboards:list:*');
@@ -33,12 +39,21 @@ export const updateDashboard = async (req, res) => {
     const { userId, ...updates } = req.body;
     try {
         const dashboard = await Dashboard.findOne({ id: req.params.id });
-        if (!dashboard) return res.status(404).json({ message: 'Not found' });
+        if (!dashboard) {
+            return res.status(404).json({ message: 'Not found' });
+        }
 
-        const canEdit = dashboard.ownerId === userId || dashboard.sharedWith.find(s => s.userId === userId && s.accessLevel === 'edit');
-        if (!canEdit) return res.status(403).json({ message: 'Permission denied' });
+        const canEdit = dashboard.ownerId === userId ||
+            dashboard.sharedWith.find(s => s.userId === userId && s.accessLevel === 'edit');
+        if (!canEdit) {
+            return res.status(403).json({ message: 'Permission denied' });
+        }
 
-        const updated = await Dashboard.findOneAndUpdate({ id: req.params.id }, updates, { returnDocument: 'after' });
+        const updated = await Dashboard.findOneAndUpdate(
+            { id: req.params.id },
+            updates,
+            { returnDocument: 'after' }
+        );
         await clearPattern('dashboards:list:*');
         await deleteCache(`dashboard:${req.params.id}`);
         res.json(updated);
@@ -51,8 +66,12 @@ export const deleteDashboard = async (req, res) => {
     const { userId } = req.query;
     try {
         const dashboard = await Dashboard.findOne({ id: req.params.id });
-        if (!dashboard) return res.status(404).json({ message: 'Not found' });
-        if (dashboard.ownerId !== userId) return res.status(403).json({ message: 'Only owner can delete' });
+        if (!dashboard) {
+            return res.status(404).json({ message: 'Not found' });
+        }
+        if (dashboard.ownerId !== userId) {
+            return res.status(403).json({ message: 'Only owner can delete' });
+        }
 
         await Dashboard.findOneAndDelete({ id: req.params.id });
         await clearPattern('dashboards:list:*');
@@ -63,22 +82,32 @@ export const deleteDashboard = async (req, res) => {
     }
 };
 
-
 export const shareDashboard = async (req, res) => {
     const { userId, targetEmail, accessLevel } = req.body;
     const email = targetEmail?.trim().toLowerCase();
     try {
         const dashboard = await Dashboard.findOne({ id: req.params.id });
-        if (!dashboard) return res.status(404).json({ message: 'Dashboard not found' });
-        if (dashboard.ownerId !== userId) return res.status(403).json({ message: 'Only owner can share' });
+        if (!dashboard) {
+            return res.status(404).json({ message: 'Dashboard not found' });
+        }
+        if (dashboard.ownerId !== userId) {
+            return res.status(403).json({ message: 'Only owner can share' });
+        }
 
-        const targetUser = await User.findOne({ email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
-        if (!targetUser) return res.status(404).json({ message: 'User to share with not found' });
+        const targetUser = await User.findOne({
+            email: { $regex: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+        });
+        if (!targetUser) {
+            return res.status(404).json({ message: 'User to share with not found' });
+        }
 
         const targetUserId = targetUser.id || targetUser._id.toString();
         const idx = dashboard.sharedWith.findIndex(s => s.userId === targetUserId);
-        if (idx > -1) dashboard.sharedWith[idx].accessLevel = accessLevel;
-        else dashboard.sharedWith.push({ userId: targetUserId, accessLevel });
+        if (idx > -1) {
+            dashboard.sharedWith[idx].accessLevel = accessLevel;
+        } else {
+            dashboard.sharedWith.push({ userId: targetUserId, accessLevel });
+        }
 
         await dashboard.save();
         await clearPattern('dashboards:list:*');
@@ -93,10 +122,14 @@ export const getDashboardById = async (req, res) => {
     const cacheKey = `dashboard:${req.params.id}`;
     try {
         const cached = await getCache(cacheKey);
-        if (cached) return res.json(cached);
+        if (cached) {
+            return res.json(cached);
+        }
 
         const dashboard = await Dashboard.findOne({ id: req.params.id });
-        if (!dashboard) return res.status(404).json({ message: 'Dashboard not found' });
+        if (!dashboard) {
+            return res.status(404).json({ message: 'Dashboard not found' });
+        }
         await setCache(cacheKey, dashboard, 300);
         res.json(dashboard);
     } catch (e) {

@@ -3,16 +3,23 @@ import pg from 'pg';
 import { MongoClient } from 'mongodb';
 
 export const stripSslMode = (uri) => {
-    if (!uri || !uri.includes('sslmode=')) return uri;
+    if (!uri || !uri.includes('sslmode=')) {
+        return uri;
+    }
     let cleaned = uri.replace(/[?&]sslmode=[^&]+/, '');
-    if (cleaned.endsWith('?') || cleaned.endsWith('&')) cleaned = cleaned.slice(0, -1);
+    if (cleaned.endsWith('?') || cleaned.endsWith('&')) {
+        cleaned = cleaned.slice(0, -1);
+    }
     return cleaned;
 };
 
 export const withMysql = async (uri, fn) => {
     const conn = await mysql.createConnection(uri);
-    try { return await fn(conn); }
-    finally { await conn.end().catch(() => { }); }
+    try {
+        return await fn(conn);
+    } finally {
+        await conn.end().catch(() => { });
+    }
 };
 
 export const withPostgres = async (uri, fn) => {
@@ -21,24 +28,37 @@ export const withPostgres = async (uri, fn) => {
         ssl: { rejectUnauthorized: false }
     });
     await client.connect();
-    try { return await fn(client); }
-    finally { await client.end().catch(() => { }); }
+    try {
+        return await fn(client);
+    } finally {
+        await client.end().catch(() => { });
+    }
 };
 
 export const withMongo = async (uri, fn) => {
     const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
     await client.connect();
-    try { return await fn(client); }
-    finally { await client.close().catch(() => { }); }
+    try {
+        return await fn(client);
+    } finally {
+        await client.close().catch(() => { });
+    }
 };
 
-export const inferType = (val) =>
-    typeof val === 'number' ? 'number'
-        : typeof val === 'boolean' ? 'boolean'
-            : 'string';
+export const inferType = (val) => {
+    if (typeof val === 'number') {
+        return 'number';
+    }
+    if (typeof val === 'boolean') {
+        return 'boolean';
+    }
+    return 'string';
+};
 
 export const buildColumns = (firstRow) => {
-    if (!firstRow) return [];
+    if (!firstRow) {
+        return [];
+    }
     return Object.entries(firstRow).map(([name, value]) => ({
         name,
         type: inferType(value),
@@ -47,6 +67,9 @@ export const buildColumns = (firstRow) => {
 };
 
 export const dbNameFromUri = (uri) => {
-    try { return new URL(uri).pathname.replace('/', '') || 'test'; }
-    catch { return 'test'; }
+    try {
+        return new URL(uri).pathname.replace('/', '') || 'test';
+    } catch {
+        return 'test';
+    }
 };

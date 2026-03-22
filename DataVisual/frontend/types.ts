@@ -9,7 +9,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  avatar: string;
   status: 'active' | 'pending' | 'rejected';
 }
 
@@ -131,13 +130,6 @@ export interface CrossDBRelationship {
   targetColumn: string;
   joinType: JoinType;
   createdBy?: string;
-}
-
-export interface SchemaAuditEntry {
-  userId: string;
-  action: string;
-  details: any;
-  timestamp: string;
 }
 
 export type ViewState = 'dashboard' | 'sql' | 'catalog' | 'knowledge' | 'settings' | 'users' | 'schema';

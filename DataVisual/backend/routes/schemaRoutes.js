@@ -4,7 +4,6 @@ import {
     createRelationship,
     updateRelationship,
     deleteRelationship,
-    getAuditLog,
     executeJoin,
     createMergedDataset,
     executeCrossDbQuery
@@ -18,7 +17,6 @@ router.put('/relationships/:id', updateRelationship);
 router.delete('/relationships/:id', deleteRelationship);
 router.post('/relationships/:id/execute', executeJoin);
 router.post('/relationships/:id/dataset', createMergedDataset);
-router.get('/audit', getAuditLog);
 router.post('/cross-db-query', executeCrossDbQuery);
 
 export default router;

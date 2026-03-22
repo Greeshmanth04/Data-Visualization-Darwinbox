@@ -93,7 +93,7 @@ const UserManagement: React.FC = () => {
                         {pendingUsers.map(user => (
                             <div key={user.id} className="p-4 flex items-center justify-between hover:bg-slate-800 transition-colors">
                                 <div className="flex items-center gap-4">
-                                    <img src={user.avatar} alt={user.name} className="w-10 h-10 rounded-full bg-slate-700" />
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">{user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}</div>
                                     <div>
                                         <div className="font-semibold text-white">{user.name}</div>
                                         <div className="text-sm text-slate-400 flex items-center gap-1">
@@ -144,7 +144,7 @@ const UserManagement: React.FC = () => {
                             <tr key={user.id} className="hover:bg-slate-800/30 transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        <img src={user.avatar} alt={user.name} className="w-9 h-9 rounded-full bg-slate-700" />
+                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">{user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}</div>
                                         <div>
                                             <div className="font-medium text-slate-200">{user.name}</div>
                                             <div className="text-xs text-slate-500">{user.email}</div>
