@@ -399,14 +399,26 @@ export const saveSqlView = async (req, res) => {
         };
 
         let payload;
-        if (source.isLive) {
+        if (source.isLive && staticData?.length) {
+            // Save as a static snapshot of the live query results
+            payload = {
+                ...base,
+                sourceType: source.sourceType,
+                connectionConfig: source.connectionConfig,
+                sourceMetadata: query,
+                isLive: false,
+                columns: colsFromRow(staticData[0]),
+                data: staticData
+            };
+        } else if (source.isLive) {
+            // No static data provided — save as a live view
             payload = {
                 ...base,
                 sourceType: source.sourceType,
                 connectionConfig: source.connectionConfig,
                 sourceMetadata: query,
                 isLive: true,
-                columns: staticData?.length ? colsFromRow(staticData[0]) : [],
+                columns: [],
                 data: []
             };
         } else {
