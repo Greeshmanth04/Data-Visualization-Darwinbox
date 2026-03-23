@@ -1,0 +1,146 @@
+
+> darwin-visualize-backend@0.0.0 test
+> cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js tests/dashboardController.test.js
+
+(node:25612) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL tests/dashboardController.test.js
+  Dashboard API /api/dashboards
+    × should create a new dashboard (70 ms)
+    × should block creation if userId is missing (9 ms)
+    × should get dashboards for a user (15 ms)
+    × should delete a dashboard if owned by user (8 ms)
+    × should forbid deleting a dashboard owned by someone else (9 ms)
+
+  ● Dashboard API /api/dashboards › should create a new dashboard
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+    [0m [90m 63 |[39m
+     [90m 64 |[39m         console[33m.[39merror([32m'RES BODY:'[39m[33m,[39m res[33m.[39mbody)[33m;[39m
+    [31m[1m>[22m[39m[90m 65 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 66 |[39m         expect(res[33m.[39mbody[33m.[39mname)[33m.[39mtoBe([32m'My New Dashboard'[39m)[33m;[39m
+     [90m 67 |[39m         expect(res[33m.[39mbody[33m.[39mownerId)[33m.[39mtoBe(user[33m.[39mid)[33m;[39m
+     [90m 68 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (tests/dashboardController.test.js:65:32)
+
+  ● Dashboard API /api/dashboards › should block creation if userId is missing
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 401
+
+    [0m [90m 74 |[39m             [33m.[39msend({ name[33m:[39m [32m'Invalid'[39m })[33m;[39m
+     [90m 75 |[39m
+    [31m[1m>[22m[39m[90m 76 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m400[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 77 |[39m         expect(res[33m.[39mbody[33m.[39mmessage)[33m.[39mtoBe([32m'User ID required'[39m)[33m;[39m
+     [90m 78 |[39m     })[33m;[39m
+     [90m 79 |[39m[0m
+
+      at Object.<anonymous> (tests/dashboardController.test.js:76:32)
+
+  ● Dashboard API /api/dashboards › should get dashboards for a user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+    [0m [90m 87 |[39m             [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m authHeader)[33m;[39m
+     [90m 88 |[39m
+    [31m[1m>[22m[39m[90m 89 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 90 |[39m         expect(res[33m.[39mbody[33m.[39mlength)[33m.[39mtoBe([35m2[39m)[33m;[39m
+     [90m 91 |[39m         expect(res[33m.[39mbody[33m.[39mmap(d [33m=>[39m d[33m.[39mname))[33m.[39mtoContain([32m'Dash 1'[39m)[33m;[39m
+     [90m 92 |[39m     })[33m;[39m[0m
+
+      at Object.<anonymous> (tests/dashboardController.test.js:89:32)
+
+  ● Dashboard API /api/dashboards › should delete a dashboard if owned by user
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 401
+
+    [0m [90m  99 |[39m             [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m authHeader)[33m;[39m
+     [90m 100 |[39m
+    [31m[1m>[22m[39m[90m 101 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m     |[39m                                [31m[1m^[22m[39m
+     [90m 102 |[39m         expect(res[33m.[39mbody[33m.[39mmessage)[33m.[39mtoBe([32m'Deleted'[39m)[33m;[39m
+     [90m 103 |[39m
+     [90m 104 |[39m         [36mconst[39m verify [33m=[39m [36mawait[39m [33mDashboard[39m[33m.[39mfindOne({ id[33m:[39m [32m'd_to_delete'[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (tests/dashboardController.test.js:101:32)
+
+  ● Dashboard API /api/dashboards › should forbid deleting a dashboard owned by someone else
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 401
+
+    [0m [90m 113 |[39m             [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m authHeader)[33m;[39m
+     [90m 114 |[39m
+    [31m[1m>[22m[39m[90m 115 |[39m         expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m403[39m)[33m;[39m
+     [90m     |[39m                                [31m[1m^[22m[39m
+     [90m 116 |[39m         expect(res[33m.[39mbody[33m.[39mmessage)[33m.[39mtoBe([32m'Only owner can delete'[39m)[33m;[39m
+     [90m 117 |[39m     })[33m;[39m
+     [90m 118 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (tests/dashboardController.test.js:115:32)
+
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+File                           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                      
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+All files                      |   17.55 |     1.28 |    1.71 |   18.12 |                                                                                                                        
+ backend                       |      75 |       25 |       0 |      75 |                                                                                                                        
+  server.js                    |      75 |       25 |       0 |      75 | 25,41,45-46,52-53                                                                                                      
+ backend/config                |    7.69 |        0 |       0 |    7.69 |                                                                                                                        
+  db.js                        |    7.69 |        0 |       0 |    7.69 | 5-28                                                                                                                   
+ backend/controllers           |    7.47 |     0.23 |       0 |    7.77 |                                                                                                                        
+  aiController.js              |   11.76 |    11.11 |       0 |   11.76 | 9-44                                                                                                                   
+  authController.js            |    9.75 |        0 |       0 |    9.75 | 5,13-40,45-69,74-81                                                                                                    
+  cacheController.js           |    6.25 |        0 |       0 |    6.38 | 7-10,14-72,77-80,85-98,103-113,118-200,205-221                                                                         
+  connectionController.js      |    8.27 |        0 |       0 |    9.09 | 6-38,42-81,85-101,111-112,116-132,137-159,164-168,173-183,188-228,233-253                                              
+  dashboardController.js       |    7.14 |        0 |       0 |    7.22 | 5-20,25-34,39-61,66-81,86-117,122-136                                                                                  
+  datasetController.js         |    7.11 |        0 |       0 |     7.4 | 23-30,36-37,42-66,71-93,98-125,130-141,146-153,158-165,170-176,181-199,204-220,225-241,246-293,298-378,383-431,436-454 
+  schemaController.js          |    6.39 |        0 |       0 |    6.62 | 7-10,14-32,36,40-97,101-119,124-142,147-165,170-180,185-231,236-274,279-341                                            
+  userController.js            |      15 |        0 |       0 |      15 | 4-8,13-25,30-37                                                                                                        
+ backend/middleware            |   17.24 |        6 |   16.66 |   17.85 |                                                                                                                        
+  authMiddleware.js            |   72.72 |       75 |     100 |   72.72 | 8,15-16                                                                                                                
+  rbacMiddleware.js            |    4.25 |        0 |       0 |    4.44 | 2-47,52-78                                                                                                             
+ backend/models                |   91.66 |       50 |      50 |   95.65 |                                                                                                                        
+  CrossDatabaseRelationship.js |     100 |      100 |     100 |     100 |                                                                                                                        
+  Dashboard.js                 |     100 |      100 |     100 |     100 |                                                                                                                        
+  DatabaseConnection.js        |     100 |      100 |     100 |     100 |                                                                                                                        
+  Dataset.js                   |     100 |      100 |     100 |     100 |                                                                                                                        
+  User.js                      |   77.77 |       50 |      50 |    87.5 | 20                                                                                                                     
+  index.js                     |       0 |        0 |       0 |       0 |                                                                                                                        
+ backend/routes                |     100 |      100 |     100 |     100 |                                                                                                                        
+  aiRoutes.js                  |     100 |      100 |     100 |     100 |                                                                                                                        
+  authRoutes.js                |     100 |      100 |     100 |     100 |                                                                                                                        
+  cacheRoutes.js               |     100 |      100 |     100 |     100 |                                                                                                                        
+  connectionRoutes.js          |     100 |      100 |     100 |     100 |                                                                                                                        
+  dashboardRoutes.js           |     100 |      100 |     100 |     100 |                                                                                                                        
+  datasetRoutes.js             |     100 |      100 |     100 |     100 |                                                                                                                        
+  datasourceRoutes.js          |     100 |      100 |     100 |     100 |                                                                                                                        
+  schemaRoutes.js              |     100 |      100 |     100 |     100 |                                                                                                                        
+  userRoutes.js                |     100 |      100 |     100 |     100 |                                                                                                                        
+ backend/utils                 |    22.5 |        0 |       4 |   22.68 |                                                                                                                        
+  cacheService.js              |   24.32 |        0 |    9.09 |   24.32 | 12-15,19-20,25-27,35-43,48-54,59-65,70-79,84-91,96,100-131,136                                                         
+  dbHelpers.js                 |   17.94 |        0 |       0 |   18.42 | 6-13,17-21,26-34,39-44,49-55,59-62,70-73                                                                               
+  encryption.js                |   28.57 |        0 |       0 |   28.57 | 4,8-12                                                                                                                 
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+Test Suites: 1 failed, 1 total
+Tests:       5 failed, 5 total
+Snapshots:   0 total
+Time:        4.708 s
+Ran all test suites matching tests/dashboardController.test.js.

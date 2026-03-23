@@ -20,8 +20,10 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-connectDB();
-
+// Connect to real DB only when not running tests
+if (process.env.NODE_ENV !== 'test') {
+    connectDB();
+}
 // Public routes
 app.use('/api/auth', authRoutes);
 
@@ -46,6 +48,10 @@ app.use((err, _req, res, _next) => {
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+}
+
+export default app;

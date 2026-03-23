@@ -1,0 +1,32 @@
+
+> darwin-visualize-backend@0.0.0 test
+> cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js tests/dashboardController.test.js
+
+FAIL tests/dashboardController.test.js
+  ● Test suite failed to run
+
+    ReferenceError: token is not defined
+
+    [0m [90m 42 |[39m describe([32m'Dashboard API /api/dashboards'[39m[33m,[39m () [33m=>[39m {
+     [90m 43 |[39m
+    [31m[1m>[22m[39m[90m 44 |[39m     [36mconst[39m authHeader [33m=[39m [32m`Bearer ${token}`[39m[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 45 |[39m
+     [90m 46 |[39m     test([32m'should create a new dashboard'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 47 |[39m         [36mconst[39m payload [33m=[39m {[0m
+
+      at tests/dashboardController.test.js:44:34
+      at tests/dashboardController.test.js:42:1
+
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        2.502 s, estimated 5 s
+Ran all test suites matching tests/dashboardController.test.js.
+(node:16288) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

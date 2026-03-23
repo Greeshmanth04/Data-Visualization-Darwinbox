@@ -1,0 +1,153 @@
+
+> darwin-visualize-backend@0.0.0 test
+> cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js tests/authController.test.js
+
+(node:13544) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL tests/authController.test.js
+  Auth API /api/auth
+    POST /register
+      × should register a new user successfully (226 ms)
+      √ should return 400 if user already exists (140 ms)
+      × should default role to VIEWER if not provided (125 ms)
+    POST /login
+      × should login user with valid credentials (236 ms)
+      × should return 400 for invalid email (127 ms)
+      × should return 400 for invalid password (237 ms)
+      √ should return 400 if fields are missing (127 ms)
+
+  ● Auth API /api/auth › POST /register › should register a new user successfully
+
+    expect(received).toHaveProperty(path)
+
+    Expected path: "token"
+    Received path: []
+
+    Received value: {"message": "Registration successful"}
+
+    [0m [90m 37 |[39m
+     [90m 38 |[39m             expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m201[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 39 |[39m             expect(res[33m.[39mbody)[33m.[39mtoHaveProperty([32m'token'[39m)[33m;[39m
+     [90m    |[39m                              [31m[1m^[22m[39m
+     [90m 40 |[39m             expect(res[33m.[39mbody[33m.[39muser)[33m.[39mtoHaveProperty([32m'email'[39m[33m,[39m validUser[33m.[39memail)[33m;[39m
+     [90m 41 |[39m             expect(res[33m.[39mbody[33m.[39muser)[33m.[39mtoHaveProperty([32m'role'[39m[33m,[39m [32m'ANALYST'[39m)[33m;[39m
+     [90m 42 |[39m             expect(res[33m.[39mbody[33m.[39muser)[33m.[39mnot[33m.[39mtoHaveProperty([32m'password'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (tests/authController.test.js:39:30)
+
+  ● Auth API /api/auth › POST /register › should default role to VIEWER if not provided
+
+    expect(received).toHaveProperty(path, value)
+
+    Matcher error: received value must not be null nor undefined
+
+    Received has value: undefined
+
+    [0m [90m 63 |[39m
+     [90m 64 |[39m             expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m201[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 65 |[39m             expect(res[33m.[39mbody[33m.[39muser)[33m.[39mtoHaveProperty([32m'role'[39m[33m,[39m [32m'VIEWER'[39m)[33m;[39m
+     [90m    |[39m                                   [31m[1m^[22m[39m
+     [90m 66 |[39m         })[33m;[39m
+     [90m 67 |[39m     })[33m;[39m
+     [90m 68 |[39m[0m
+
+      at Object.<anonymous> (tests/authController.test.js:65:35)
+
+  ● Auth API /api/auth › POST /login › should login user with valid credentials
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 403
+
+    [0m [90m 81 |[39m                 })[33m;[39m
+     [90m 82 |[39m
+    [31m[1m>[22m[39m[90m 83 |[39m             expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m200[39m)[33m;[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 84 |[39m             expect(res[33m.[39mbody)[33m.[39mtoHaveProperty([32m'token'[39m)[33m;[39m
+     [90m 85 |[39m             expect(res[33m.[39mbody[33m.[39muser[33m.[39memail)[33m.[39mtoBe(validUser[33m.[39memail)[33m;[39m
+     [90m 86 |[39m             expect(res[33m.[39mbody[33m.[39muser)[33m.[39mnot[33m.[39mtoHaveProperty([32m'password'[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (tests/authController.test.js:83:36)
+
+  ● Auth API /api/auth › POST /login › should return 400 for invalid email
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 401
+
+    [0m [90m  95 |[39m                 })[33m;[39m
+     [90m  96 |[39m
+    [31m[1m>[22m[39m[90m  97 |[39m             expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m400[39m)[33m;[39m
+     [90m     |[39m                                    [31m[1m^[22m[39m
+     [90m  98 |[39m             expect(res[33m.[39mbody)[33m.[39mtoHaveProperty([32m'message'[39m[33m,[39m [32m'Invalid credentials'[39m)[33m;[39m
+     [90m  99 |[39m         })[33m;[39m
+     [90m 100 |[39m[0m
+
+      at Object.<anonymous> (tests/authController.test.js:97:36)
+
+  ● Auth API /api/auth › POST /login › should return 400 for invalid password
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 401
+
+    [0m [90m 107 |[39m                 })[33m;[39m
+     [90m 108 |[39m
+    [31m[1m>[22m[39m[90m 109 |[39m             expect(res[33m.[39mstatusCode)[33m.[39mtoBe([35m400[39m)[33m;[39m
+     [90m     |[39m                                    [31m[1m^[22m[39m
+     [90m 110 |[39m             expect(res[33m.[39mbody)[33m.[39mtoHaveProperty([32m'message'[39m[33m,[39m [32m'Invalid credentials'[39m)[33m;[39m
+     [90m 111 |[39m         })[33m;[39m
+     [90m 112 |[39m[0m
+
+      at Object.<anonymous> (tests/authController.test.js:109:36)
+
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+File                           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                      
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+All files                      |    18.9 |     3.67 |    2.85 |   19.51 |                                                                                                                        
+ backend                       |      75 |       25 |       0 |      75 |                                                                                                                        
+  server.js                    |      75 |       25 |       0 |      75 | 25,41,45-46,52-53                                                                                                      
+ backend/config                |    7.69 |        0 |       0 |    7.69 |                                                                                                                        
+  db.js                        |    7.69 |        0 |       0 |    7.69 | 5-28                                                                                                                   
+ backend/controllers           |   10.04 |        4 |    1.45 |   10.44 |                                                                                                                        
+  aiController.js              |   11.76 |    11.11 |       0 |   11.76 | 9-44                                                                                                                   
+  authController.js            |   60.97 |    69.56 |      50 |   60.97 | 5,32-40,48,51,69,74-81                                                                                                 
+  cacheController.js           |    6.25 |        0 |       0 |    6.38 | 7-10,14-72,77-80,85-98,103-113,118-200,205-221                                                                         
+  connectionController.js      |    8.27 |        0 |       0 |    9.09 | 6-38,42-81,85-101,111-112,116-132,137-159,164-168,173-183,188-228,233-253                                              
+  dashboardController.js       |    7.14 |        0 |       0 |    7.22 | 5-20,25-34,39-61,66-81,86-117,122-136                                                                                  
+  datasetController.js         |    7.11 |        0 |       0 |     7.4 | 23-30,36-37,42-66,71-93,98-125,130-141,146-153,158-165,170-176,181-199,204-220,225-241,246-293,298-378,383-431,436-454 
+  schemaController.js          |    6.39 |        0 |       0 |    6.62 | 7-10,14-32,36,40-97,101-119,124-142,147-165,170-180,185-231,236-274,279-341                                            
+  userController.js            |      15 |        0 |       0 |      15 | 4-8,13-25,30-37                                                                                                        
+ backend/middleware            |    5.17 |        0 |       0 |    5.35 |                                                                                                                        
+  authMiddleware.js            |    9.09 |        0 |       0 |    9.09 | 4-18                                                                                                                   
+  rbacMiddleware.js            |    4.25 |        0 |       0 |    4.44 | 2-47,52-78                                                                                                             
+ backend/models                |   95.83 |       50 |     100 |     100 |                                                                                                                        
+  CrossDatabaseRelationship.js |     100 |      100 |     100 |     100 |                                                                                                                        
+  Dashboard.js                 |     100 |      100 |     100 |     100 |                                                                                                                        
+  DatabaseConnection.js        |     100 |      100 |     100 |     100 |                                                                                                                        
+  Dataset.js                   |     100 |      100 |     100 |     100 |                                                                                                                        
+  User.js                      |   88.88 |       50 |     100 |     100 | 14                                                                                                                     
+  index.js                     |       0 |        0 |       0 |       0 |                                                                                                                        
+ backend/routes                |     100 |      100 |     100 |     100 |                                                                                                                        
+  aiRoutes.js                  |     100 |      100 |     100 |     100 |                                                                                                                        
+  authRoutes.js                |     100 |      100 |     100 |     100 |                                                                                                                        
+  cacheRoutes.js               |     100 |      100 |     100 |     100 |                                                                                                                        
+  connectionRoutes.js          |     100 |      100 |     100 |     100 |                                                                                                                        
+  dashboardRoutes.js           |     100 |      100 |     100 |     100 |                                                                                                                        
+  datasetRoutes.js             |     100 |      100 |     100 |     100 |                                                                                                                        
+  datasourceRoutes.js          |     100 |      100 |     100 |     100 |                                                                                                                        
+  schemaRoutes.js              |     100 |      100 |     100 |     100 |                                                                                                                        
+  userRoutes.js                |     100 |      100 |     100 |     100 |                                                                                                                        
+ backend/utils                 |    22.5 |        0 |       4 |   22.68 |                                                                                                                        
+  cacheService.js              |   24.32 |        0 |    9.09 |   24.32 | 12-15,19-20,25-27,35-43,48-54,59-65,70-79,84-91,96,100-131,136                                                         
+  dbHelpers.js                 |   17.94 |        0 |       0 |   18.42 | 6-13,17-21,26-34,39-44,49-55,59-62,70-73                                                                               
+  encryption.js                |   28.57 |        0 |       0 |   28.57 | 4,8-12                                                                                                                 
+-------------------------------|---------|----------|---------|---------|------------------------------------------------------------------------------------------------------------------------
+Test Suites: 1 failed, 1 total
+Tests:       5 failed, 2 passed, 7 total
+Snapshots:   0 total
+Time:        4.729 s, estimated 8 s
+Ran all test suites matching tests/authController.test.js.

@@ -6,10 +6,10 @@ export const stripSslMode = (uri) => {
     if (!uri || !uri.includes('sslmode=')) {
         return uri;
     }
-    let cleaned = uri.replace(/[?&]sslmode=[^&]+/, '');
-    if (cleaned.endsWith('?') || cleaned.endsWith('&')) {
-        cleaned = cleaned.slice(0, -1);
-    }
+    let cleaned = uri.replace(/[?&]sslmode=[^&]+/, (match) => {
+        return match.startsWith('?') ? '?' : '';
+    });
+    cleaned = cleaned.replace(/\?&/, '?').replace(/\?$/, '').replace(/&$/, '');
     return cleaned;
 };
 
