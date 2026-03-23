@@ -12,18 +12,23 @@ interface EditorProps {
 
 type Row = Record<string, any>;
 
+function sanitizeTableName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
 function runInMemorySQL(sql: string, data: Row[], datasetName: string): Row[] {
+  const safeName = sanitizeTableName(datasetName);
   try {
-    alasql.tables[datasetName] = { data };
+    alasql.tables[safeName] = { data };
     const res = alasql(sql);
-    delete alasql.tables[datasetName];
+    delete alasql.tables[safeName];
 
     if (!Array.isArray(res)) {
       throw new Error('Query did not return a tabular result.');
     }
     return res;
   } catch (err: any) {
-    delete alasql.tables[datasetName];
+    delete alasql.tables[safeName];
     throw new Error(`SQL Error: ${err.message}`);
   }
 }
@@ -62,22 +67,30 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
 
 
   const selectedDataset = datasets.find(d => d.id === selectedDatasetId);
-  const isLiveDB = ['postgres', 'mysql'].includes(selectedDataset?.sourceType || '');
-  const isMongo = selectedDataset?.sourceType === 'mongodb';
+  const isLiveDB = !!selectedDataset?.isLive && ['postgres', 'mysql'].includes(selectedDataset?.sourceType || '');
+  const isMongo = !!selectedDataset?.isLive && selectedDataset?.sourceType === 'mongodb';
 
   useEffect(() => {
     if (selectedDataset) {
-      const tableName = selectedDataset.sourceMetadata || selectedDataset.name;
       if (isMongo) {
-        setQuery(`db.${tableName}.find({}).limit(10)`);
+        const collectionName = (typeof selectedDataset.sourceMetadata === 'string'
+          ? selectedDataset.sourceMetadata : null) || selectedDataset.name;
+        setQuery(`db.${collectionName}.find({}).limit(10)`);
+      } else if (isLiveDB) {
+        const tableName = (typeof selectedDataset.sourceMetadata === 'string'
+          ? selectedDataset.sourceMetadata : null) || selectedDataset.name;
+        const quote = selectedDataset.sourceType === 'postgres' ? '"' : '`';
+        setQuery(`SELECT * FROM ${quote}${tableName}${quote} LIMIT 10`);
       } else {
-        setQuery(`SELECT * FROM \`${tableName}\` LIMIT 10`);
+        // Static/in-memory datasets: use sanitized name matching what alasql registers
+        const safeName = sanitizeTableName(selectedDataset.name);
+        setQuery(`SELECT * FROM ${safeName} LIMIT 10`);
       }
       setResults(null);
       setError(null);
       setExecTime(null);
     }
-  }, [selectedDatasetId, datasets, isMongo, selectedDataset]);
+  }, [selectedDatasetId, datasets, isMongo, isLiveDB, selectedDataset]);
 
   const executeQuery = useCallback(async () => {
     if (!selectedDataset) {
@@ -272,7 +285,7 @@ const Editor: React.FC<EditorProps> = ({ datasets }) => {
               onChange={e => setQuery(e.target.value)}
               className="w-full h-full bg-[#0f172a] text-blue-100 font-mono p-6 resize-none focus:outline-none text-sm leading-6"
               spellCheck={false}
-              placeholder={isMongo ? 'db.collection.find({})' : 'SELECT * FROM `table_name` LIMIT 10'}
+              placeholder={isMongo ? 'db.collection.find({})' : selectedDataset?.sourceType === 'postgres' ? 'SELECT * FROM "table_name" LIMIT 10' : 'SELECT * FROM `table_name` LIMIT 10'}
               onKeyDown={e => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault();

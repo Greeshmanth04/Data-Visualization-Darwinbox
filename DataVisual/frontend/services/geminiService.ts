@@ -25,7 +25,7 @@ export const generateQueryFromNaturalLanguage = async (
 
   // Create a schema summary for the context
   const schemaContext = datasets.map(d =>
-    `Table: ${d.id} (${d.description})\nColumns: ${d.columns.map(c => `${c.name} (${c.type})`).join(', ')}`
+    `Table: ${d.name} (${d.description})\nColumns: ${d.columns.map(c => `${c.name} (${c.type})`).join(', ')}`
   ).join('\n\n');
 
   try {

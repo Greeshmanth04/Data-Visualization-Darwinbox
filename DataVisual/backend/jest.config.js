@@ -7,10 +7,5 @@ export default {
     setupFiles: ['<rootDir>/tests/setup.js'],
     testMatch: ['**/tests/**/*.test.js'],
     verbose: true,
-    collectCoverage: true,
-    coverageDirectory: 'coverage',
-    coveragePathIgnorePatterns: [
-        '/node_modules/',
-        '/tests/'
-    ]
+    collectCoverage: false
 };

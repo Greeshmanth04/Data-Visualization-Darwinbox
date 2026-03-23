@@ -20,7 +20,9 @@ export const generateQuery = async (req, res) => {
 
         const dialectInstruction = dialect === 'mongodb'
             ? 'Use MongoDB aggregation pipeline or find query syntax.'
-            : 'Use standard SQL syntax suitable for SQLite.';
+            : dialect === 'postgres'
+                ? 'Use PostgreSQL syntax with double quotes (") for table and column names.'
+                : 'Use MySQL syntax with backticks (`) for table and column names.';
 
         const fullPrompt = `
       You are an expert ${dialect.toUpperCase()} dialect translator for a custom analytics engine.

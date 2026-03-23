@@ -313,7 +313,8 @@ const DataSourceModal: React.FC<{
         const res = await api.datasets.previewMongoDB(config.uri, config.database, config.collection);
         data = res.data;
       } else {
-        const query = `SELECT * FROM ${config.table} LIMIT 10`;
+        const quote = sourceType === 'postgres' ? '"' : '`';
+        const query = `SELECT * FROM ${quote}${config.table}${quote} LIMIT 10`;
         const res = await api.datasets.querySQL({ uri: config.uri, type: sourceType, query });
         data = res.data;
       }
