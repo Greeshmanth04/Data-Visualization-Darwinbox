@@ -3,10 +3,10 @@ import pg from 'pg';
 import { MongoClient } from 'mongodb';
 
 export const stripSslMode = (uri) => {
-    if (!uri || !uri.includes('sslmode=')) {
+    if (!uri || (!uri.includes('sslmode=') && !uri.includes('ssl-mode='))) {
         return uri;
     }
-    let cleaned = uri.replace(/[?&]sslmode=[^&]+/, (match) => {
+    let cleaned = uri.replace(/[?&](?:sslmode|ssl-mode)=[^&]+/g, (match) => {
         return match.startsWith('?') ? '?' : '';
     });
     cleaned = cleaned.replace(/\?&/, '?').replace(/\?$/, '').replace(/&$/, '');
@@ -14,7 +14,7 @@ export const stripSslMode = (uri) => {
 };
 
 export const withMysql = async (uri, fn) => {
-    const conn = await mysql.createConnection(uri);
+    const conn = await mysql.createConnection(stripSslMode(uri));
     try {
         return await fn(conn);
     } finally {
